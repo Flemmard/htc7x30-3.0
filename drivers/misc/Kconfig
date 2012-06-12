@@ -569,6 +569,13 @@ config HAPTIC_ISA1200
 	help
 	  The ISA1200 is a high performance enhanced haptic driver.
 
+config SENSORS_BMA150_SPI
+        tristate "BMA150 G-sensor Driver"
+	depends on MICROP_COMMON
+        default y
+        help
+         BMA150 G-sensor Driver implemented by HTC.
+
 config PMIC8058_PWM
 	tristate "Qualcomm PM8058 PWM support"
 	depends on PMIC8058

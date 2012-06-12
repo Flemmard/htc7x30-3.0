@@ -1218,7 +1218,7 @@ static struct pm8058_platform_data pm8058_7x30_data = {
 	.gpio_pdata		= &pm8xxx_gpio_pdata,
 	.mpp_pdata		= &pm8xxx_mpp_pdata,
 	//	.misc_pdata = &pm8xxx_up_pdata,
-	//        .pwm_pdata		= &pm8058_pwm_data,
+	.pwm_pdata		= &pm8058_pwm_data,
 	//      .vibrator_pdata		= &pm8058_vib_pdata,
 };
 
