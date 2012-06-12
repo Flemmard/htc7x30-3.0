@@ -480,6 +480,13 @@ config MACH_BLISS
        help
          Support for the Qualcomm Bliss board.
 
+config MACH_VISION
+       depends on ARCH_MSM7X30
+       default n
+       bool "Vision"
+       help
+         Support for the Qualcomm Vision board.
+
 config MACH_SPADE
        depends on ARCH_MSM7X30
        default n
@@ -1856,6 +1863,12 @@ config MSM_IDLE_WAIT_ON_MODEM
 	  If Modem is not ready to handle Application Processor's request
 	  for idle power collapse, wait the number of microseconds in case
 	  Modem becomes ready soon.
+
+config MICROP_COMMON
+	tristate "MICROP COMMON Driver"
+	depends on I2C
+	help
+	  HTC Microp-P support.
 
 config HTC_HEADSET_MGR
 	tristate "HTC headset manager driver"

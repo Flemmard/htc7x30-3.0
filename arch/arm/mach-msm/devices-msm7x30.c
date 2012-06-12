@@ -22,6 +22,7 @@
 #include <linux/regulator/machine.h>
 #include <mach/irqs.h>
 #include <mach/msm_iomap.h>
+#include <mach/msm_smsm.h>
 #include <mach/dma.h>
 #include <mach/board.h>
 #include <asm/clkdev.h>
@@ -39,6 +40,19 @@
 #endif
 #include <mach/dal_axi.h>
 #include <mach/msm_memtypes.h>
+
+void config_gpio_table_dbg(uint32_t *table, int len, char *file, int line)
+{
+	int n, rc;
+	for (n = 0; n < len; n++) {
+		rc = gpio_tlmm_config(table[n], GPIO_CFG_ENABLE);
+		if (rc) {
+			pr_err("%s: gpio_tlmm_config(%#x)[%d]=%d (%s:%d)\n",
+			       __func__, table[n], n, rc, file, line);
+			break;
+		}
+	}
+}
 
 /* EBI THERMAL DRIVER */
 static struct resource msm_ebi0_thermal_resources[] = {
@@ -263,6 +277,48 @@ struct platform_device msm_device_i2c = {
 	.id		= 0,
 	.num_resources	= ARRAY_SIZE(resources_i2c),
 	.resource	= resources_i2c,
+};
+
+static struct resource qsd_spi_resources[] = {
+	{
+		.name   = "spi_irq_in",
+		.start	= INT_SPI_INPUT,
+		.end	= INT_SPI_INPUT,
+		.flags	= IORESOURCE_IRQ,
+	},
+	{
+		.name   = "spi_irq_out",
+		.start	= INT_SPI_OUTPUT,
+		.end	= INT_SPI_OUTPUT,
+		.flags	= IORESOURCE_IRQ,
+	},
+	{
+		.name   = "spi_irq_err",
+		.start	= INT_SPI_ERROR,
+		.end	= INT_SPI_ERROR,
+		.flags	= IORESOURCE_IRQ,
+	},
+	{
+		.name   = "spi_base",
+		.start	= 0xA8000000,
+		.end	= 0xA8000000 + SZ_4K - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.name   = "spidm_channels",
+		.flags  = IORESOURCE_DMA,
+	},
+	{
+		.name   = "spidm_crci",
+		.flags  = IORESOURCE_DMA,
+	},
+};
+
+struct platform_device qsd_device_spi = {
+	.name		= "spi_qsd",
+	.id		= 0,
+	.num_resources	= ARRAY_SIZE(qsd_spi_resources),
+	.resource	= qsd_spi_resources,
 };
 
 #define MSM_QUP_PHYS           0xA8301000
@@ -1152,6 +1208,66 @@ void __init msm_fb_register_device(char *name, void *data)
 	else
 		printk(KERN_ERR "%s: unknown device! %s\n", __func__, name);
 }
+
+#if defined(CONFIG_MSM_RMT_STORAGE_CLIENT) && defined(CONFIG_MACH_VISION)
+#define RAMFS_INFO_MAGICNUMBER		0x654D4D43
+#define RAMFS_INFO_VERSION		0x00000001
+#define RAMFS_MODEMSTORAGE_ID		0x4D454653
+
+static struct resource rmt_storage_resources[] = {
+       {
+		.flags  = IORESOURCE_MEM,
+       },
+};
+
+static struct platform_device rmt_storage_device = {
+       .name           = "rmt_storage",
+       .id             = -1,
+       .num_resources  = ARRAY_SIZE(rmt_storage_resources),
+       .resource       = rmt_storage_resources,
+};
+
+int __init rmt_storage_add_ramfs(void)
+{
+	struct shared_ramfs_table *ramfs_table;
+	struct shared_ramfs_entry *ramfs_entry;
+	int index;
+
+	ramfs_table = smem_alloc(SMEM_SEFS_INFO,
+			sizeof(struct shared_ramfs_table));
+
+	if (!ramfs_table) {
+		printk(KERN_WARNING "%s: No RAMFS table in SMEM\n", __func__);
+		return -ENOENT;
+	}
+
+	if ((ramfs_table->magic_id != (u32) RAMFS_INFO_MAGICNUMBER) ||
+		(ramfs_table->version != (u32) RAMFS_INFO_VERSION)) {
+		printk(KERN_WARNING "%s: Magic / Version mismatch:, "
+		       "magic_id=%#x, format_version=%#x\n", __func__,
+		       ramfs_table->magic_id, ramfs_table->version);
+		return -ENOENT;
+	}
+
+	for (index = 0; index < ramfs_table->entries; index++) {
+		ramfs_entry = &ramfs_table->ramfs_entry[index];
+
+		/* Find a match for the Modem Storage RAMFS area */
+		if (ramfs_entry->client_id == (u32) RAMFS_MODEMSTORAGE_ID) {
+			printk(KERN_INFO "%s: RAMFS Info (from SMEM): "
+				"Baseaddr = 0x%08x, Size = 0x%08x\n", __func__,
+				ramfs_entry->base_addr, ramfs_entry->size);
+
+			rmt_storage_resources[0].start = ramfs_entry->base_addr;
+			rmt_storage_resources[0].end = ramfs_entry->base_addr +
+							ramfs_entry->size - 1;
+			msm_register_device(&rmt_storage_device, ramfs_entry);
+			return 0;
+		}
+	}
+	return -ENOENT;
+}
+#endif
 
 static struct platform_device msm_camera_device = {
 	.name	= "msm_camera",

@@ -18,6 +18,7 @@ endif
 endif
 
 obj-y += acpuclock.o
+obj-y += drv_callback.o
 obj-y += radio_feedback.o
 obj-$(CONFIG_ARCH_MSM7X01A) += acpuclock-7201.o
 obj-$(CONFIG_ARCH_MSM7X25) += acpuclock-7201.o
@@ -460,6 +461,16 @@ obj-$(CONFIG_MACH_SPADE) += board-spade-mmc.o board-spade-wifi.o
 obj-$(CONFIG_MACH_SPADE) += display/spade-panel.o
 obj-$(CONFIG_MACH_SPADE) += htc_sleep_clk.o htc_fast_clk_7k.o
 obj-$(CONFIG_MACH_SPADE) += htc_bdaddress.o
+obj-$(CONFIG_ARCH_MSM7X30) += display/panel-samsungwvga-tl2796a.o display/panel-samsungwvga-s6e63m0.o display/panel-sonywvga-s6d16a0x21-7x30.o display/msm7x30-compat-panel.o
+obj-$(CONFIG_MACH_VISION) += board-vision.o
+obj-$(CONFIG_MACH_VISION) += board-vision-microp.o
+obj-$(CONFIG_MACH_VISION) += board-vision-mmc.o
+obj-$(CONFIG_MACH_VISION) += board-vision-audio.o
+obj-$(CONFIG_MACH_VISION) += board-vision-keypad.o
+obj-$(CONFIG_MACH_VISION) += board-vision-rfkill.o
+obj-$(CONFIG_MACH_VISION) += board-vision-wifi.o
+obj-$(CONFIG_MACH_VISION) += display/vision-panel.o
+obj-$(CONFIG_MACH_VISION) += htc_bdaddress.o
 obj-$(CONFIG_MACH_SAGA) += board-saga.o
 obj-$(CONFIG_MACH_SAGA) += board-saga-keypad.o
 obj-$(CONFIG_MACH_SAGA) += board-saga-mmc.o board-saga-wifi.o
@@ -521,7 +532,11 @@ obj-$(CONFIG_HTC_HEADSET_MISC) += htc_headset_misc.o
 obj-$(CONFIG_HTC_HEADSET_MAX8957) += htc_headset_max8957.o
 obj-$(CONFIG_HTC_HEADSET_8X60) += htc_headset_8x60.o
 ifeq ($(CONFIG_ARCH_MSM7X30),y)
-obj-$(CONFIG_MSM_RMT_STORAGE_CLIENT) += rmt_storage_client-7x30.o
+	ifeq ($(CONFIG_MACH_VISION),y)
+		obj-$(CONFIG_MSM_RMT_STORAGE_CLIENT) += rmt_storage_server.o
+	else
+		obj-$(CONFIG_MSM_RMT_STORAGE_CLIENT) += rmt_storage_client-7x30.o
+	endif
 else
 obj-$(CONFIG_MSM_RMT_STORAGE_CLIENT) += rmt_storage_client.o
 endif
@@ -576,6 +591,7 @@ obj-$(CONFIG_MACH_PICO) += board-msm7x27a-regulator.o
 endif
 
 obj-$(CONFIG_PERFLOCK) += perflock.o
+obj-$(CONFIG_MICROP_COMMON) += atmega_microp_common.o
 obj-$(CONFIG_MFD_MAX8957) += max8957_gpio.o
 obj-y += display/
 obj-$(CONFIG_MACH_PRIMOTD) += board-primotd-gps.o
