@@ -100,11 +100,13 @@ static int __devinit curcial_oj_probe(struct platform_device *pdev);
 static int __devexit curcial_oj_remove(struct platform_device *pdev);
 
 static struct platform_driver curcial_oj_device_driver = {
-	.probe    = curcial_oj_probe,
-	.remove   = __devexit_p(curcial_oj_remove),
+  .probe    = curcial_oj_probe,
+#if 0
+  .remove   = __devexit_p(curcial_oj_remove),
+#endif
 	.driver   = {
-		.name   = CURCIAL_OJ_NAME,
-		.owner  = THIS_MODULE,
+    .name   = CURCIAL_OJ_NAME,
+    		.owner  = THIS_MODULE,
 	}
 };
 
@@ -675,7 +677,7 @@ static int __devinit curcial_oj_probe(struct platform_device *pdev)
 	  printk(KERN_ERR "%s: curcial_oj_init failed\n", __func__);
 		goto fail;
 	}
-
+#if 0
 	err = gpio_request(oj->irq_gpio, "OJ irq");
 	if (err < 0) {
 		printk(KERN_ERR "oj: gpio_request error\n");
@@ -703,7 +705,7 @@ static int __devinit curcial_oj_probe(struct platform_device *pdev)
 		gpio_free(oj->irq_gpio);
 		goto fail;
 	}
-
+#endif
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	oj->early_suspend.suspend = curcial_oj_early_suspend;
@@ -798,7 +800,6 @@ static int __devexit curcial_oj_remove(struct platform_device *pdev)
 	printk(KERN_INFO "OJ: driver unloaded\n");
 	return 0;
 }
-
 static int __init curcial_oj_module_init(void)
 {
 	return platform_driver_register(&curcial_oj_device_driver);
@@ -814,10 +815,13 @@ module_exit(curcial_oj_module_exit);
 
 void curcial_oj_send_key(unsigned int code, int value)
 {
-	if ((my_oj != NULL) && (my_oj->input_dev != NULL))
+  if ((my_oj != NULL) && (my_oj->input_dev != NULL)) {
 		input_report_key(my_oj->input_dev, code, value);
-	else
-		printk(KERN_WARNING "%s: device not ready...\n", __func__);
+		if (code == BTN_MOUSE)
+		  input_sync(my_oj->input_dev);
+  }
+  else
+    printk(KERN_WARNING "%s: device not ready...\n", __func__);
 }
 
 MODULE_DESCRIPTION("Crucial OpticalJoystick Driver");
