@@ -101,11 +101,9 @@ static int __devexit curcial_oj_remove(struct platform_device *pdev);
 
 static struct platform_driver curcial_oj_device_driver = {
   .probe    = curcial_oj_probe,
-#if 0
   .remove   = __devexit_p(curcial_oj_remove),
-#endif
-	.driver   = {
-    .name   = CURCIAL_OJ_NAME,
+  .driver   = {
+		.name   = CURCIAL_OJ_NAME,
     		.owner  = THIS_MODULE,
 	}
 };
@@ -677,7 +675,6 @@ static int __devinit curcial_oj_probe(struct platform_device *pdev)
 	  printk(KERN_ERR "%s: curcial_oj_init failed\n", __func__);
 		goto fail;
 	}
-#if 0
 	err = gpio_request(oj->irq_gpio, "OJ irq");
 	if (err < 0) {
 		printk(KERN_ERR "oj: gpio_request error\n");
@@ -705,7 +702,6 @@ static int __devinit curcial_oj_probe(struct platform_device *pdev)
 		gpio_free(oj->irq_gpio);
 		goto fail;
 	}
-#endif
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	oj->early_suspend.suspend = curcial_oj_early_suspend;
