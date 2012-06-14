@@ -32,7 +32,7 @@
 #define OJ_SHUTDOWN            (35)
 #define OJ_RST                 (36)
 
-#define OJ_DEBUG 1
+// #define OJ_DEBUG 1
 static struct spi_device        *spidev;
 struct work_struct oj_work;
 
