@@ -80,6 +80,8 @@ atomic_t irq_cnt;
 
 static struct vfe31_ctrl_type *vfe31_ctrl;
 static void  *vfe_syncdata;
+static struct clk *ebi1_clk;
+static const char *const clk_name = "ebi1_dcvs_clk";
 
 static uint8_t vfe_sof_irq_debug_cnt = 0;
 #define  vfe_sof_irq_debug_max_cnt 200
@@ -506,6 +508,12 @@ static void vfe31_release(struct platform_device *pdev)
 	/* for some sensor doesn't disable MCLK when sensor release */
 	if (!sinfo->use_rawchip)
 		msm_camio_probe_off(pdev);
+
+	if (ebi1_clk) {
+		clk_set_rate(ebi1_clk, 0);
+		clk_put(ebi1_clk);
+		ebi1_clk = 0;
+	}
 
 	pr_info("[CAM] %s X\n", __func__);
 }
@@ -3072,6 +3080,19 @@ static int vfe31_init(struct msm_vfe_callback *presp,
 {
 	int rc = 0;
 	pr_info("[CAM]vfe31_init\n");
+
+	ebi1_clk = clk_get(NULL, clk_name);
+	if (!ebi1_clk) {
+		pr_err("[CAM]%s: could not get %s\n", __func__, clk_name);
+		return -EIO;
+	}
+
+	rc = clk_set_rate(ebi1_clk, 128000000);
+	if (rc < 0) {
+		pr_err("[CAM]%s: clk_set_rate(%s) failed: %d\n", __func__,
+			clk_name, rc);
+		return rc;
+	}
 
 	rc = vfe31_resource_init(presp, dev, vfe_syncdata);
 	if (rc < 0) {
