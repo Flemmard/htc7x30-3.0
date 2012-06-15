@@ -47,7 +47,7 @@ extern struct platform_device msm_device_mddi0;
 #define MSM_RAM_CONSOLE_BASE	0x00500000
 #define MSM_RAM_CONSOLE_SIZE	0x00100000
 
-#define MSM_PMEM_ADSP_SIZE	0x01D00000
+#define MSM_PMEM_ADSP_SIZE	0x02600000
 
 #define MSM_PMEM_AUDIO_SIZE	0x00200000
 
@@ -55,7 +55,7 @@ extern struct platform_device msm_device_mddi0;
 
 #define MSM_PMEM_SF_SIZE	0x02000000
 
-#define MSM_FB_SIZE		0x00300000
+#define MSM_FB_SIZE		0x00500000
 
 #define VISION_GPIO_WIFI_IRQ             147
 #define VISION_GPIO_WIFI_SHUTDOWN_N       39
