@@ -147,6 +147,7 @@ extern struct platform_device msm_device_ssbi_pmic2;
 extern struct platform_device msm_device_ssbi1;
 extern struct platform_device msm_device_ssbi2;
 extern struct platform_device msm_device_ssbi3;
+extern struct platform_device msm_device_ssbi6;
 extern struct platform_device msm_device_ssbi7;
 
 #ifdef CONFIG_MSM_SSBI

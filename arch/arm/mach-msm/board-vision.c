@@ -1234,15 +1234,6 @@ static struct msm_ssbi_platform_data msm7x30_ssbi_pm8058_pdata __devinitdata = {
 };
 #endif
 
-static int flashlight_control(int mode)
-{
-#ifdef CONFIG_FLASHLIGHT_AAT1271
-	return aat1271_flashlight_control(mode);
-#else
-	return 0;
-#endif
-}
-
 
 static int __init buses_init(void)
 {
@@ -2498,6 +2489,291 @@ static struct msm_serial_hs_platform_data msm_uart_dm1_pdata = {
 };
 #endif
 
+#ifdef CONFIG_MSM_CAMERA
+
+static struct i2c_board_info msm_camera_boardinfo[] __initdata = {
+#ifdef CONFIG_S5K4E1GX
+	{
+		I2C_BOARD_INFO("s5k4e1gx", 0x20 >> 1),
+	},
+#endif
+};
+
+static uint32_t camera_off_gpio_table[] = {
+	/* parallel CAMERA interfaces */
+	PCOM_GPIO_CFG(VISION_CAM_RST,  0, GPIO_OUTPUT, GPIO_PULL_DOWN, GPIO_2MA), /* RST */
+	PCOM_GPIO_CFG(VISION_CAM_PWD,  0, GPIO_OUTPUT, GPIO_PULL_DOWN, GPIO_2MA), /* PWD */
+	PCOM_GPIO_CFG(2,  0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_4MA), /* DAT2 */
+	PCOM_GPIO_CFG(3,  0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_4MA), /* DAT3 */
+	PCOM_GPIO_CFG(4,  0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_4MA), /* DAT4 */
+	PCOM_GPIO_CFG(5,  0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_4MA), /* DAT5 */
+	PCOM_GPIO_CFG(6,  0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_4MA), /* DAT6 */
+	PCOM_GPIO_CFG(7,  0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_4MA), /* DAT7 */
+	PCOM_GPIO_CFG(8,  0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_4MA), /* DAT8 */
+	PCOM_GPIO_CFG(9,  0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_4MA), /* DAT9 */
+	PCOM_GPIO_CFG(10, 0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_4MA), /* DAT10 */
+	PCOM_GPIO_CFG(11, 0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_4MA), /* DAT11 */
+	PCOM_GPIO_CFG(12, 0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_4MA), /* PCLK */
+	PCOM_GPIO_CFG(13, 0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_4MA), /* HSYNC_IN */
+	PCOM_GPIO_CFG(14, 0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_4MA), /* VSYNC_IN */
+	PCOM_GPIO_CFG(15, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_2MA), /* MCLK */
+
+};
+
+static uint32_t camera_on_gpio_table[] = {
+	/* parallel CAMERA interfaces */
+	PCOM_GPIO_CFG(VISION_CAM_RST,   0, GPIO_OUTPUT, GPIO_PULL_DOWN, GPIO_2MA), /* RST */
+	PCOM_GPIO_CFG(VISION_CAM_PWD,   0, GPIO_OUTPUT, GPIO_PULL_DOWN, GPIO_2MA), /* PWD */
+	PCOM_GPIO_CFG(2,  1, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA), /* DAT2 */
+	PCOM_GPIO_CFG(3,  1, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA), /* DAT3 */
+	PCOM_GPIO_CFG(4,  1, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA), /* DAT4 */
+	PCOM_GPIO_CFG(5,  1, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA), /* DAT5 */
+	PCOM_GPIO_CFG(6,  1, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA), /* DAT6 */
+	PCOM_GPIO_CFG(7,  1, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA), /* DAT7 */
+	PCOM_GPIO_CFG(8,  1, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA), /* DAT8 */
+	PCOM_GPIO_CFG(9,  1, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA), /* DAT9 */
+	PCOM_GPIO_CFG(10, 1, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA), /* DAT10 */
+	PCOM_GPIO_CFG(11, 1, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA), /* DAT11 */
+	PCOM_GPIO_CFG(12, 1, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA), /* PCLK */
+	PCOM_GPIO_CFG(13, 1, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA), /* HSYNC_IN */
+	PCOM_GPIO_CFG(14, 1, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA), /* VSYNC_IN */
+	PCOM_GPIO_CFG(15, 1, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_16MA), /* MCLK */
+
+};
+
+static int vision_sensor_power_enable(char *power, unsigned volt)
+{
+	struct vreg *vreg_gp;
+	int rc;
+
+	if (power == NULL)
+		return EIO;
+
+	vreg_gp = vreg_get(NULL, power);
+	if (IS_ERR(vreg_gp)) {
+		pr_err("%s: vreg_get(%s) failed (%ld)\n",
+			__func__, power, PTR_ERR(vreg_gp));
+		return EIO;
+	}
+
+	rc = vreg_set_level(vreg_gp, volt);
+	if (rc) {
+		pr_err("%s: vreg wlan set %s level failed (%d)\n",
+			__func__, power, rc);
+		return EIO;
+	}
+
+	rc = vreg_enable(vreg_gp);
+	if (rc) {
+		pr_err("%s: vreg enable %s failed (%d)\n",
+			__func__, power, rc);
+		return EIO;
+	}
+	return rc;
+}
+
+static int vision_sensor_power_disable(char *power)
+{
+	struct vreg *vreg_gp;
+	int rc;
+	vreg_gp = vreg_get(NULL, power);
+	if (IS_ERR(vreg_gp)) {
+		pr_err("%s: vreg_get(%s) failed (%ld)\n",
+			__func__, power, PTR_ERR(vreg_gp));
+		return EIO;
+	}
+
+	rc = vreg_disable(vreg_gp);
+	if (rc) {
+		pr_err("%s: vreg disable %s failed (%d)\n",
+			__func__, power, rc);
+		return EIO;
+	}
+	return rc;
+}
+
+static int vision_sensor_vreg_on(void)
+{
+	int rc;
+	pr_info("%s camera vreg on\n", __func__);
+
+	if (system_rev > 1) {
+		/*Board XC and after*/
+		/*camera VCM power*/
+		rc = vision_sensor_power_enable("gp4", 2850);
+		/*camera digital power*/
+		rc = vision_sensor_power_enable("wlan", 1800);
+	} else {
+		/*Board XA,XB*/
+		/*camera VCM power*/
+		rc = vision_sensor_power_enable("wlan", 2850);
+		/*camera digital power*/
+		rc = vision_sensor_power_enable("gp4", 1800);
+	}
+
+	/*camera analog power*/
+	if (system_rev > 0) {
+		/* printk("camera analog power by GPIO\n"); */
+		/* This delay is just temporary work-around,*/
+		/*and will remove when HW power team fix */
+		/*the power up two stage problem with pmic */
+		udelay(200);
+		gpio_set_value(VISION_CAM_A2V85_EN, 1);
+	} else
+		rc = vision_sensor_power_enable("gp6", 2850);
+
+	/*camera IO power*/
+	rc = vision_sensor_power_enable("gp2", 1800);
+	return rc;
+}
+
+static int vision_sensor_vreg_off(void)
+{
+	int rc;
+	/*camera analog power*/
+	if (system_rev > 0) {
+		printk(KERN_INFO "camera analog power by GPIO\n");
+		gpio_set_value(VISION_CAM_A2V85_EN, 0);
+	} else {
+		printk(KERN_INFO "camera analog power by PMIC\n");
+		rc = vision_sensor_power_disable("gp6");
+	}
+	/*camera digital power*/
+	rc = vision_sensor_power_disable("gp4");
+	/*camera IO power*/
+	rc = vision_sensor_power_disable("gp2");
+	/*camera VCM power*/
+	rc = vision_sensor_power_disable("wlan");
+	return rc;
+}
+
+static void config_vision_camera_on_gpios(void)
+{
+	config_gpio_table(camera_on_gpio_table,
+		ARRAY_SIZE(camera_on_gpio_table));
+}
+
+static void config_vision_camera_off_gpios(void)
+{
+	config_gpio_table(camera_off_gpio_table,
+		ARRAY_SIZE(camera_off_gpio_table));
+}
+
+static struct resource msm_camera_resources[] = {
+	{
+		.start	= 0xA6000000,
+		.end	= 0xA6000000 + SZ_1M - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.start	= INT_VFE,
+		.end	= INT_VFE,
+		.flags	= IORESOURCE_IRQ,
+	},
+};
+
+static int flashlight_control(int mode)
+{
+ 	/* FIXME: kernel crashes on this function */
+	return 0; //aat1271_flashlight_control(mode);
+}
+
+struct msm_camera_device_platform_data msm_camera_device_data = {
+	.camera_gpio_on  = config_vision_camera_on_gpios,
+	.camera_gpio_off = config_vision_camera_off_gpios,
+	.ioext.mdcphy = MSM_MDC_PHYS,
+	.ioext.mdcsz  = MSM_MDC_SIZE,
+	.ioext.appphy = MSM_CLK_CTL_PHYS,
+	.ioext.appsz  = MSM_CLK_CTL_SIZE,
+	.ioext.camifpadphy = 0xAB000000,
+	.ioext.camifpadsz  = 0x00000400
+#if 0
+	.ioext.csiphy = 0xA6100000,
+	.ioext.csisz  = 0x00000400,
+	.ioext.csiirq = INT_CSI
+#endif
+};
+
+static struct camera_flash_cfg msm_camera_sensor_flash_cfg = {
+	.camera_flash		= flashlight_control,
+	.num_flash_levels	= FLASHLIGHT_NUM,
+	.low_temp_limit		= 5,
+	.low_cap_limit		= 15,
+};
+
+static struct msm_camera_sensor_info msm_camera_sensor_s5k4e1gx_data = {
+	.sensor_name    = "s5k4e1gx",
+	.sensor_reset   = VISION_CAM_RST,
+	.vcm_pwd        = VISION_CAM_PWD,
+	.camera_power_on = vision_sensor_vreg_on,
+	.camera_power_off = vision_sensor_vreg_off,
+	.pdata          = &msm_camera_device_data,
+	.flash_type     = MSM_CAMERA_FLASH_LED,
+	.sensor_platform_info = NULL,
+	.resource       = msm_camera_resources,
+	.num_resources  = ARRAY_SIZE(msm_camera_resources),
+	.power_down_disable = false, /* true: disable pwd down function */
+
+	.csi_if = 0,
+	.dev_node = 0,
+	.use_rawchip = 0,
+#ifdef CONFIG_ARCH_MSM_FLASHLIGHT
+	.flash_cfg      = &msm_camera_sensor_flash_cfg,
+#endif
+};
+
+static struct platform_device msm_camera_sensor_s5k4e1gx = {
+	.name      = "msm_camera_s5k4e1gx",
+	.dev       = {
+		.platform_data = &msm_camera_sensor_s5k4e1gx_data,
+	},
+};
+
+#ifdef CONFIG_MSM_GEMINI
+static struct resource msm_gemini_resources[] = {
+	{
+		.start  = 0xA3A00000,
+		.end    = 0xA3A00000 + 0x0150 - 1,
+		.flags  = IORESOURCE_MEM,
+	},
+	{
+		.start  = INT_JPEG,
+		.end    = INT_JPEG,
+		.flags  = IORESOURCE_IRQ,
+	},
+};
+
+static struct platform_device msm_gemini_device = {
+	.name           = "msm_gemini",
+	.resource       = msm_gemini_resources,
+	.num_resources  = ARRAY_SIZE(msm_gemini_resources),
+};
+#endif
+
+#ifdef CONFIG_MSM_VPE
+static struct resource msm_vpe_resources[] = {
+	{
+		.start	= 0xAD200000,
+		.end	= 0xAD200000 + SZ_1M - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.start	= INT_VPE,
+		.end	= INT_VPE,
+		.flags	= IORESOURCE_IRQ,
+	},
+};
+
+static struct platform_device msm_vpe_device = {
+       .name = "msm_vpe",
+       .id   = 0,
+       .num_resources = ARRAY_SIZE(msm_vpe_resources),
+       .resource = msm_vpe_resources,
+};
+#endif
+
+#endif /*CONFIG_MSM_CAMERA*/
+
 #ifdef CONFIG_BT
 static struct platform_device vision_rfkill = {
 	.name = "vision_rfkill",
@@ -2663,6 +2939,7 @@ static struct platform_device *devices[] __initdata = {
         &msm_device_ssbi_pmic1,
 #endif
 #ifdef CONFIG_I2C_SSBI
+        &msm_device_ssbi6,
         &msm_device_ssbi7,
 #endif
         &android_pmem_device,
@@ -2684,6 +2961,9 @@ static struct platform_device *devices[] __initdata = {
         &msm_lpa_device,
         &msm_aux_pcm_device,
 #endif
+#ifdef CONFIG_S5K4E1GX
+        &msm_camera_sensor_s5k4e1gx,
+#endif
 
         &msm_device_adspdec,
         &qup_device_i2c,
@@ -2694,13 +2974,11 @@ static struct platform_device *devices[] __initdata = {
         &msm_kgsl_3d0,
         &msm_kgsl_2d0,
         &msm_device_vidc_720p,
-#if 0
 #ifdef CONFIG_MSM_GEMINI
         &msm_gemini_device,
 #endif
 #ifdef CONFIG_MSM_VPE
         &msm_vpe_device,
-#endif
 #endif
 #if defined(CONFIG_TSIF) || defined(CONFIG_TSIF_MODULE)
         &msm_device_tsif,
@@ -2858,17 +3136,12 @@ static void __init qup_device_i2c_init(void)
 }
 
 #ifdef CONFIG_I2C_SSBI
-
-#if 0
 static struct msm_i2c_ssbi_platform_data msm_i2c_ssbi6_pdata = {
 	.rsl_id = "D:PMIC_SSBI",
-	.controller_type = MSM_SBI_CTRL_SSBI2,
 };
-#endif
 
 static struct msm_i2c_ssbi_platform_data msm_i2c_ssbi7_pdata = {
 	.rsl_id = "D:CODEC_SSBI",
-	.controller_type = MSM_SBI_CTRL_SSBI,
 };
 #endif
 
@@ -4182,10 +4455,10 @@ static void __init vision_init(void)
 		i2c_register_board_info(0, i2c_compass_devices1,
 			ARRAY_SIZE(i2c_compass_devices1));
 
+	i2c_register_board_info(4 /* QUP ID */, msm_camera_boardinfo,
+				ARRAY_SIZE(msm_camera_boardinfo));
 #ifdef CONFIG_I2C_SSBI
-#if 0
 	msm_device_ssbi6.dev.platform_data = &msm_i2c_ssbi6_pdata;
-#endif
 	msm_device_ssbi7.dev.platform_data = &msm_i2c_ssbi7_pdata;
 #endif
 /*
@@ -4212,7 +4485,9 @@ static void __init vision_init(void)
 	boot_reason = *(unsigned int *)
 		(smem_get_entry(SMEM_POWER_ON_STATUS_INFO, &smem_size));
 	printk(KERN_NOTICE "Boot Reason = 0x%02x\n", boot_reason);
-
+#ifdef CONFIG_MSM_CAMERA
+	config_gpio_table(camera_on_gpio_table, ARRAY_SIZE(camera_on_gpio_table));
+#endif
 	properties_kobj = kobject_create_and_add("board_properties", NULL);
 	if (properties_kobj)
 		rc = sysfs_create_group(properties_kobj,
@@ -4221,7 +4496,7 @@ static void __init vision_init(void)
 		pr_err("failed to create board_properties\n");
 
 	i2c_register_board_info(0, i2c_devices,	ARRAY_SIZE(i2c_devices));
-       	vision_init_keypad();
+	vision_init_keypad();
 #ifdef CONFIG_MDP4_HW_VSYNC
 	vision_te_gpio_config();
 #endif

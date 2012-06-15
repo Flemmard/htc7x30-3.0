@@ -556,8 +556,7 @@ int msm_camio_enable(struct platform_device *pdev)
 
 	camio_ext = camdev->ioext;
 
-	/*suggest per-sensor driver to config*/
-	/* camdev->camera_gpio_on(); */
+	camdev->camera_gpio_on();
 
 	msm_camio_clk_enable(CAMIO_VFE_PBDG_CLK);
 	msm_camio_clk_enable(CAMIO_CAMIF_PAD_PBDG_CLK);

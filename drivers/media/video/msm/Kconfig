@@ -186,13 +186,13 @@ config S5K4E1
 	  two mipi lanes, required for msm7x2xA platform.
 	  Say Y here if this is msm7x2xA variant platform.
 
-config S5K4E5YX
-        bool "Sensor s5k4e5yx (Samsung 5M)"
-        depends on MSM_CAMERA
-        default n
-        ---help---
-          Samsung 5M with Autofocus
-	  
+config S5K4E1GX
+	bool "Sensor s5k4e1gx (Samsung 5M)"
+	depends on MSM_CAMERA
+	default n
+	---help---
+	  Samsung 5M with Autofocus
+
 config S5K3H1GX
   bool "Sensor s5k3h1gx"
   depends on MSM_CAMERA
