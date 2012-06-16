@@ -512,6 +512,8 @@ else
 obj-$(CONFIG_MACH_KINGDOM) += board-kingdom-mmc.o board-kingdom-wifi.o
 endif
 
+obj-$(CONFIG_ARCH_MSM_FLASHLIGHT) += msm_flashlight.o
+
 obj-$(CONFIG_MACH_KINGDOM) += htc_bdaddress.o board-kingdom-rfkill.o
 
 CFLAGS_msm_vibrator.o += -Idrivers/staging/android

@@ -2672,11 +2672,12 @@ static struct resource msm_camera_resources[] = {
 	},
 };
 
+#ifdef CONFIG_ARCH_MSM_FLASHLIGHT
 static int flashlight_control(int mode)
 {
- 	/* FIXME: kernel crashes on this function */
-	return 0; //aat1271_flashlight_control(mode);
+	return aat1271_flashlight_control(mode);
 }
+#endif
 
 struct msm_camera_device_platform_data msm_camera_device_data = {
 	.camera_gpio_on  = config_vision_camera_on_gpios,
@@ -2694,12 +2695,15 @@ struct msm_camera_device_platform_data msm_camera_device_data = {
 #endif
 };
 
+#ifdef CONFIG_ARCH_MSM_FLASHLIGHT
 static struct camera_flash_cfg msm_camera_sensor_flash_cfg = {
 	.camera_flash		= flashlight_control,
 	.num_flash_levels	= FLASHLIGHT_NUM,
 	.low_temp_limit		= 5,
 	.low_cap_limit		= 15,
+	.flash_info			= NULL,
 };
+#endif
 
 static struct msm_camera_sensor_info msm_camera_sensor_s5k4e1gx_data = {
 	.sensor_name    = "s5k4e1gx",
@@ -2837,31 +2841,34 @@ static struct platform_device ram_console_device = {
 	.resource       = ram_console_resources,
 };
 
-#ifdef CONFIG_FLASHLIGHT_TPS61310
-static void config_flashlight_gpios_tps61310(void)
+#ifdef CONFIG_ARCH_MSM_FLASHLIGHT
+static void config_vision_flashlight_gpios(void)
 {
 	static uint32_t flashlight_gpio_table[] = {
-		GPIO_CFG(VISION_GPIO_TORCH_EN, 0, GPIO_OUTPUT,
-						GPIO_NO_PULL, GPIO_CFG_2MA),
+		PCOM_GPIO_CFG(VISION_GPIO_FLASHLIGHT_TORCH, 0,
+					GPIO_OUTPUT, GPIO_PULL_DOWN, GPIO_2MA),
+		PCOM_GPIO_CFG(VISION_GPIO_FLASHLIGHT_FLASH, 0,
+					GPIO_OUTPUT, GPIO_PULL_DOWN, GPIO_2MA),
+
 	};
+
 	config_gpio_table(flashlight_gpio_table,
 		ARRAY_SIZE(flashlight_gpio_table));
-
 }
 
-
-static struct TPS61310_flashlight_platform_data vision_flashlight_data = {
-	.gpio_init = config_flashlight_gpios_tps61310,
-	.tps61310_strb1 = VISION_GPIO_TORCH_EN,
-	.tps61310_strb0 = PM8058_GPIO_PM_TO_SYS(VISION_GPIO_FLASH_EN),
+static struct flashlight_platform_data vision_flashlight_data = {
+	.gpio_init  = config_vision_flashlight_gpios,
+	.torch = VISION_GPIO_FLASHLIGHT_TORCH,
+	.flash = VISION_GPIO_FLASHLIGHT_FLASH,
 	.flash_duration_ms = 600,
 	.led_count = 1,
+	.chip_model = 0,
 };
 
-static struct i2c_board_info vision_flashlight[] = {
-{
-	I2C_BOARD_INFO("TPS61310_FLASHLIGHT", 0x66 >> 1),
-	.platform_data	= &vision_flashlight_data,
+static struct platform_device vision_flashlight_device = {
+	.name = FLASHLIGHT_NAME,
+	.dev		= {
+		.platform_data	= &vision_flashlight_data,
 	},
 };
 #endif
@@ -3006,8 +3013,9 @@ static struct platform_device *devices[] __initdata = {
 #ifdef CONFIG_BT
         &vision_rfkill,
 #endif
-
-
+#ifdef CONFIG_ARCH_MSM_FLASHLIGHT
+        &vision_flashlight_device,
+#endif
         &pm8058_leds,
 	//        &cable_detect_device,
 };
@@ -4502,7 +4510,7 @@ static void __init vision_init(void)
 #endif
 	vision_init_panel();
 	vision_audio_init();
-        vision_wifi_init();
+	vision_wifi_init();
 	msm_init_pmic_vibrator(3000);
 }
 
