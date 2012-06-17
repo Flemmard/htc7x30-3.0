@@ -34,19 +34,6 @@
 #include <mach/atmega_microp.h>
 #include "../board-vision.h"
 
-//#if 0
-static struct msm_mdp_platform_data mdp_pdata = {
-	.overrides = 0,
-	.color_format = MSM_MDP_OUT_IF_FMT_RGB888,
-#ifdef CONFIG_MDP4_HW_VSYNC
-	.xres = 480,
-	.yres = 800,
-	.back_porch = 4,
-	.front_porch = 2,
-	.pulse_width = 4,
-#endif
-};
-//#endif
 #define DEBUG_LCM
 #ifdef DEBUG_LCM
 #define LCMDBG(fmt, arg...)	printk(fmt, ## arg)
@@ -444,11 +431,18 @@ static struct platform_device sonywvga_lcdc_device = {
 	},
 };
 
-#if 0
 static struct msm_mdp_platform_data mdp_pdata = {
-        .color_format = MSM_MDP_OUT_IF_FMT_RGB666,
-};
+	.overrides = 0,
+	.color_format = MSM_MDP_OUT_IF_FMT_RGB666,
+#ifdef CONFIG_MDP4_HW_VSYNC
+	.xres = 480,
+	.yres = 800,
+	.back_porch = 4,
+	.front_porch = 2,
+	.pulse_width = 4,
 #endif
+};
+
 void sonywvga_brightness_set(struct led_classdev *led_cdev,
 			enum led_brightness val)
 {
