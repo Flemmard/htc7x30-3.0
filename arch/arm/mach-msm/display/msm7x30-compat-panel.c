@@ -35,7 +35,7 @@ int panel_init_spi_hack(void)
 
   if (hackInited)
     return 0;
-  spi_base = ioremap(0xA1200000, 4096);
+  spi_base = ioremap(MSM_SPI_PHYS, MSM_SPI_SIZE);
   if (!spi_base)
     return -1;
 
@@ -97,14 +97,14 @@ int qspi_send_16bit(unsigned char id, unsigned data)
 	clk_enable(spi_clk);
         /* bit-5: OUTPUT_FIFO_NOT_EMPTY */
         while( readl(spi_base+SPI_OPERATIONAL) & (1<<5) )
-{
-                if( (err=readl(spi_base+SPI_ERROR_FLAGS)) )
-	{
-                        printk("\rERROR:  SPI_ERROR_FLAGS=%d\r", err);
-                        return -1;
-		}
-	}
-
+          {
+            if( (err=readl(spi_base+SPI_ERROR_FLAGS)) )
+              {
+                printk("\rERROR:  SPI_ERROR_FLAGS=%d\r", err);
+                return -1;
+              }
+          }
+        
 	writel( (id<<13 | data)<<16, spi_base+SPI_OUTPUT_FIFO );/*AUO*/
         udelay(1000);
 	clk_disable(spi_clk);

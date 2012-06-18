@@ -300,8 +300,8 @@ static struct resource qsd_spi_resources[] = {
 	},
 	{
 		.name   = "spi_base",
-		.start	= 0xA8000000,
-		.end	= 0xA8000000 + SZ_4K - 1,
+		.start	= MSM_SPI_PHYS,
+		.end	= MSM_SPI_PHYS + MSM_SPI_SIZE - 1,
 		.flags	= IORESOURCE_MEM,
 	},
 	{
