@@ -704,7 +704,7 @@ static struct microp_led_config up_led_config[] = {
 		.name = "button-backlight",
 		.type = LED_PWM,
 		.led_pin = 1 << 0,
-		.init_value = 30,
+		.init_value = 0,
 		.fade_time = 5,
 	},
 	{
@@ -1964,13 +1964,7 @@ static struct msm_pm_platform_data msm_pm_data[MSM_PM_SLEEP_MODE_NR] = {
 	},
 };
 
-static int msm_qsd_spi_dma_config(void)
-{
-	return -ENOENT;
-}
-
 #ifdef CONFIG_SPI_QSD
-
 static struct spi_board_info msm_spi_board_info[] __initdata = {
 	{
 		.modalias	= "spi_qsd",
@@ -1989,7 +1983,6 @@ static struct spi_board_info msm_spi_board_info[] __initdata = {
 };
 #endif
 
-
 static struct platform_device vision_oj = {
 	.name = CURCIAL_OJ_NAME,
 	.id = -1,
@@ -2003,15 +1996,15 @@ static uint32_t qsd_spi_gpio_on_table[] = {
 	PCOM_GPIO_CFG(47, 1, GPIO_INPUT, GPIO_NO_PULL, GPIO_16MA),
 	PCOM_GPIO_CFG(48, 1, GPIO_INPUT, GPIO_NO_PULL, GPIO_16MA),
 	PCOM_GPIO_CFG(87, 1, GPIO_INPUT, GPIO_NO_PULL, GPIO_16MA),
-	PCOM_GPIO_CFG(89, 2, GPIO_OUTPUT, GPIO_PULL_UP, GPIO_6MA)
+	PCOM_GPIO_CFG(89, 2, GPIO_INPUT, GPIO_NO_PULL, GPIO_6MA)
 };
 
 static uint32_t qsd_spi_gpio_off_table[] = {
 	PCOM_GPIO_CFG(45, 0, GPIO_INPUT, GPIO_NO_PULL, GPIO_16MA),
 	PCOM_GPIO_CFG(47, 0, GPIO_INPUT, GPIO_NO_PULL, GPIO_16MA),
 	PCOM_GPIO_CFG(48, 0, GPIO_INPUT, GPIO_NO_PULL, GPIO_16MA),
-	PCOM_GPIO_CFG(87, 0, GPIO_INPUT, GPIO_NO_PULL, GPIO_16MA),
-	PCOM_GPIO_CFG(89, 0, GPIO_INPUT, GPIO_NO_PULL, GPIO_16MA)
+	PCOM_GPIO_CFG(87, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_16MA),
+	PCOM_GPIO_CFG(89, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_16MA)
 };
 
 static int msm_qsd_spi_gpio_config(void)
@@ -2033,7 +2026,6 @@ static struct msm_spi_platform_data qsd_spi_pdata = {
 	.max_clock_speed = 26331429,
 	.gpio_config  = msm_qsd_spi_gpio_config,
 	.gpio_release = msm_qsd_spi_gpio_release,
-	.dma_config = msm_qsd_spi_dma_config,
 };
 
 static void __init msm_qsd_spi_init(void)
@@ -2959,7 +2951,7 @@ static struct platform_device *devices[] __initdata = {
         &msm_device_i2c,
         &msm_device_i2c_2,
 #ifdef CONFIG_INPUT_CAPELLA_CM3602
-	&capella_cm3602,
+        &capella_cm3602,
 #endif
         &hs_device,
 #if defined(CONFIG_MSM7KV2_1X_AUDIO) || defined(CONFIG_MSM7KV2_AUDIO)
@@ -4562,10 +4554,10 @@ static void __init size_pmem_device(struct android_pmem_platform_data *pdata, un
 	pdata->start = start;
 	pdata->size = size;
 	if (pdata->start)
-		pr_info("%s: pmem %s requests %lu bytes at 0x%p (0x%lx physical).\r\n",
+		pr_info("%s: pmem %s requests %lu bytes at 0x%p (0x%lx physical).\n",
 			__func__, pdata->name, size, __va(start), start);
 	else
-		pr_info("%s: pmem %s requests %lu bytes dynamically.\r\n",
+		pr_info("%s: pmem %s requests %lu bytes dynamically.\n",
 			__func__, pdata->name, size);
 }
 
@@ -4582,7 +4574,7 @@ static void __init size_pmem_devices(void)
 static void __init reserve_memory_for(struct android_pmem_platform_data *p)
 {
 	if (p->start == 0) {
-		pr_info("%s: reserve %lu bytes from memory %d for %s.\r\n", __func__, p->size, p->memory_type, p->name);
+		pr_info("%s: reserve %lu bytes from memory %d for %s.\n", __func__, p->size, p->memory_type, p->name);
 		msm7x30_reserve_table[p->memory_type].size += p->size;
 	}
 }
