@@ -327,9 +327,7 @@ struct outputCfg {
 struct msm_frame {
 	int path;
 	unsigned long buffer;
-#ifdef CONFIG_CAMERA_MULTISHOT
 	uint32_t phy_offset;
-#endif
 	uint32_t y_off;
 	uint32_t cbcr_off;
 	int fd;
