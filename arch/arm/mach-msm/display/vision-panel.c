@@ -136,7 +136,7 @@ int panel_power_on(void)
     return -1;
   }
   hr_msleep(5);
-#if 0
+
   if (is_samsung_panel())
     {
       hr_msleep(5);
@@ -160,7 +160,7 @@ int panel_power_on(void)
       gpio_set_value(VISION_LCD_RSTz, 1);
       hr_msleep(10);
     }
-#endif
+
   return 0;
 }
 
@@ -168,7 +168,6 @@ int panel_power_off(void)
 {
   int rc;
 
-#if 0
   if (is_samsung_panel())
     {
       hr_msleep(5);
@@ -182,7 +181,7 @@ int panel_power_off(void)
       gpio_set_value(VISION_LCD_RSTz, 0);
       hr_msleep(120);
     }
-#endif
+
   rc = vreg_disable(vreg_ldo12);
   if (rc)
     {
@@ -291,12 +290,6 @@ int vision_init_panel(void)
 
   printk(KERN_ERR "%s: Sony=%d Samsung=%d Other=%d\n", __func__, is_sony_panel(), panel_type == SAMSUNG_PANEL, panel_type != SAMSUNG_PANEL && !is_sony_panel());
 
-  ret = panel_init_spi_hack();
-  if (ret != 0)
-    {
-      printk(KERN_ERR "%s: Panel hack failed\n", __func__);
-      return ret;
-    }
   vreg_ldo12 = vreg_get(NULL, "gp9");
   if (IS_ERR(vreg_ldo12)) {
     pr_err("%s: gp9 vreg get failed (%ld)\n",
