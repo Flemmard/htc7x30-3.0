@@ -1387,9 +1387,11 @@ static int htc_rpc_charger_switch(unsigned enable)
 			if (ret < 0)
 				BATT_ERR("%s: msm_rpc_call failed (%d)!", __func__, ret);
 		}
+#if 0
 #if defined(CONFIG_BATTERY_DS2746)
 		if (htc_batt_info.guage_driver == GUAGE_DS2746)
 			ds2746_charger_switch(enable);
+#endif
 #endif
 		power_supply_changed(&htc_power_supplies[CHARGER_BATTERY]);
 	}

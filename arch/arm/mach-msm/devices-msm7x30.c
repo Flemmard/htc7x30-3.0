@@ -54,6 +54,7 @@ void config_gpio_table_dbg(uint32_t *table, int len, char *file, int line)
 	}
 }
 
+unsigned long msm_fb_base;
 /* EBI THERMAL DRIVER */
 static struct resource msm_ebi0_thermal_resources[] = {
 	{

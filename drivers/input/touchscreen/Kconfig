@@ -291,6 +291,12 @@ config TOUCHSCREEN_GUNZE
 	  To compile this driver as a module, choose M here: the
 	  module will be called gunze.
 
+config TOUCHSCREEN_ELAN_KTF2K
+	tristate "Elan KTF2000 I2C touchscreen"
+	depends on I2C
+	help
+	  This enables support for Elan KTF2000 over I2C based touchscreens.
+
 config TOUCHSCREEN_ELO
 	tristate "Elo serial touchscreens"
 	select SERIO
