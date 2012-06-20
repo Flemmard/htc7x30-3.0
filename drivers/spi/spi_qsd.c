@@ -1481,7 +1481,7 @@ static void msm_spi_process_transfer(struct msm_spi *dd)
 		max_speed = dd->cur_transfer->speed_hz;
 	else
 		max_speed = dd->cur_msg->spi->max_speed_hz;
-	if (!dd->clock_speed || max_speed != dd->clock_speed)
+	if (!dd->clock_speed || max_speed < dd->clock_speed)
 		msm_spi_clock_set(dd, max_speed);
 
 	read_count = DIV_ROUND_UP(dd->cur_msg_len, dd->bytes_per_word);
