@@ -161,7 +161,7 @@ void __init vision_microp_init(void);
 int __init vision_init_panel(void);
 
 static unsigned int engineerid;
-unsigned long msm_fb_base;
+extern unsigned long msm_fb_base;
 
 unsigned int vision_get_engineerid(void)
 {
@@ -3009,7 +3009,7 @@ static struct platform_device *devices[] __initdata = {
         &vision_flashlight_device,
 #endif
         &pm8058_leds,
-	//        &cable_detect_device,
+	//	&cable_detect_device,
 };
 
 static struct msm_gpio msm_i2c_gpios_hw[] = {
@@ -4405,8 +4405,7 @@ static void __init vision_init(void)
 	platform_add_devices(devices, ARRAY_SIZE(devices));
 
 	/*usb driver won't be loaded in MFG 58 station and gift mode*/
-	if (!(board_mfg_mode() == 6 || board_mfg_mode() == 7))
-		vision_add_usb_devices();
+	vision_add_usb_devices();
 
 #ifdef CONFIG_USB_EHCI_MSM_72K
 	msm_add_host(0, &msm_usb_host_pdata);
@@ -4439,12 +4438,8 @@ static void __init vision_init(void)
 	aux_pcm_gpio_init();
 	msm_snddev_init();
 	audience_gpio_init();
-        //	vision_audio_init();
 #endif
-	/* i2c_register_board_info(0, msm_i2c_board_info,
-			ARRAY_SIZE(msm_i2c_board_info)); */
 
-	/*bt_power_init();*/
 	i2c_register_board_info(2, msm_marimba_board_info,
 			ARRAY_SIZE(msm_marimba_board_info));
 
@@ -4659,7 +4654,7 @@ MACHINE_START(VISION, "vision")
 	.fixup = vision_fixup,
 	.map_io = vision_map_io,
 	.reserve = vision_reserve,
-	.init_irq = vision_init_irq,
+	.init_irq = msm_init_irq,
 	.init_machine = vision_init,
 	.timer = &msm_timer,
 	.init_early = vision_init_early,
