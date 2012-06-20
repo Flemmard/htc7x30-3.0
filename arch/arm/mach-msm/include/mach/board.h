@@ -562,7 +562,7 @@ struct msm_usb_host_platform_data;
 int  msm_add_host(unsigned int host,
 		struct msm_usb_host_platform_data *plat);
 
-#if defined(CONFIG_MSM_RMT_STORAGE_CLIENT) && defined(CONFIG_MACH_VISION)
+#if defined(CONFIG_MSM_RMT_STORAGE_CLIENT) && (defined(CONFIG_MACH_VISION) || defined(CONFIG_MACH_SPADE))
 struct shared_ramfs_entry {
 	uint32_t client_id;   	/* Client id to uniquely identify a client */
 	uint32_t base_addr;	/* Base address of shared RAMFS memory */

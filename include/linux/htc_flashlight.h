@@ -68,7 +68,7 @@ struct flashlight_platform_data {
 int aat1271_flashlight_control(int mode);
 #endif
 
-#if defined(CONFIG_MACH_VISION) && !defined(CONFIG_FLASHLIGHT_AAT1271)
+#if (defined(CONFIG_MACH_VISION) || defined(CONFIG_MACH_SPADE)) && !defined(CONFIG_FLASHLIGHT_AAT1271)
 struct flashlight_platform_data {
 	void (*gpio_init) (void);
 	uint32_t torch;

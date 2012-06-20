@@ -888,7 +888,7 @@ static int pm8058_gpios_init(void)
 		.direction      = PM_GPIO_DIR_OUT,
 		.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
 		.output_value   = 1,
-		.pull           = PM_GPIO_PULL_NO,
+		.pull           = PM_GPIO_PULL_UP_31P5,
 		.vin_sel        = PM8058_GPIO_VIN_L5,
 		.out_strength   = PM_GPIO_STRENGTH_HIGH,
 		.function       = PM_GPIO_FUNC_NORMAL,
@@ -3697,6 +3697,7 @@ static void __init spade_init(void)
 	if (machine_is_msm7x30_surf())
 		platform_device_register(&flip_switch_device);
 */
+	pm8058_gpios_init();
 
 #if defined(CONFIG_MSM_RMT_STORAGE_CLIENT)
 	rmt_storage_add_ramfs();
