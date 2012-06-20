@@ -2381,16 +2381,16 @@ config FB_PUV3_UNIGFX
 	  framebuffer device. Without the support of PCI & AGP.
 
 if ARCH_MSM8X60
-	source "drivers/video/msm_8x60/Kconfig"
+#	source "drivers/video/msm_8x60/Kconfig"
 endif
 
 if ARCH_MSM7X30
 	source "drivers/video/msm_7x30/Kconfig"
 endif
 
-#if (ARCH_MSM8960 || ARCH_MSM7X27A)
-	source "drivers/video/msm/Kconfig"
-#endif
+if (ARCH_MSM8960 || ARCH_MSM7X27A)
+#	source "drivers/video/msm/Kconfig"
+endif
 
 config FB_MSM_OVERLAY_LEGACY
 	bool

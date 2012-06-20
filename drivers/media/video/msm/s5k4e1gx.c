@@ -1006,7 +1006,7 @@ static int32_t s5k4e1gx_setting(enum msm_s_reg_update rupdate,
 	struct msm_camera_sensor_info *sdata = s5k4e1_pdev->dev.platform_data;
 
 	if (sdata->csi_if) {
-		if (s5k4e1gx_ctrl->reg_update == S_REG_INIT) {
+		if ((int)s5k4e1gx_ctrl->reg_update == (int)S_REG_INIT) {
 			/* config mipi csi controller */
 			s5k4e1gx_csi_params.data_format = CSI_10BIT;
 			s5k4e1gx_csi_params.lane_cnt = 2;
