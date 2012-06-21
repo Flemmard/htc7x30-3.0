@@ -41,7 +41,7 @@ source "drivers/gpu/msm_adreno200/Kconfig"
 endif
 
 if MSM_KGSL_ADRENO205
-source "drivers/gpu/msm_adreno205/Kconfig"
+source "drivers/gpu/msm/Kconfig"
 endif
 
 if MSM_KGSL_ADRENO220
