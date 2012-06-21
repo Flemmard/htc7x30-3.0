@@ -2386,6 +2386,7 @@ endif
 
 if ARCH_MSM7X30
 	source "drivers/video/msm_7x30/Kconfig"
+	source "drivers/video/msm/vidc/Kconfig"
 endif
 
 if (ARCH_MSM8960 || ARCH_MSM7X27A)

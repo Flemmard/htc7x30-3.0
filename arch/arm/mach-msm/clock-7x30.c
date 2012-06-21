@@ -22,6 +22,7 @@
 #include <linux/clk.h>
 #include <linux/clkdev.h>
 #include <linux/string.h>
+#include <asm/div64.h>
 
 #include <mach/msm_iomap.h>
 #include <mach/clk.h>
