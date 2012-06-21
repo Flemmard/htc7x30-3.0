@@ -946,6 +946,13 @@ static int pm8058_gpios_init(void)
 	} else
 	  printk(KERN_ERR "%s TP_RSTz config ok\n", __func__);
 
+	rc = pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(SPADE_SDMC_CD_N), &sdmc_cd_n);
+	if (rc) {
+		printk(KERN_ERR "%s SLIDING_INTz config failed\n", __func__);
+		return rc;
+	} else
+	  printk(KERN_ERR "%s SLIDING_INTz config ok\n", __func__);
+
 	rc = pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(SPADE_VOL_UP), &vol_up);
 	if (rc) {
 		printk(KERN_ERR "%s VOL_UP config failed\n", __func__);
@@ -958,14 +965,6 @@ static int pm8058_gpios_init(void)
 		return rc;
 	} else
 	  printk(KERN_ERR "%s VOL_DN config ok\n", __func__);
-
-	rc = pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(SPADE_SDMC_CD_N), &sdmc_cd_n);
-	if (rc) {
-		printk(KERN_ERR "%s SLIDING_INTz config failed\n", __func__);
-		return rc;
-	} else
-	  printk(KERN_ERR "%s SLIDING_INTz config ok\n", __func__);
-
 	rc = pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(SPADE_AUD_HP_DETz), &headset);
 	if (rc) {
 		printk(KERN_ERR "%s AUD_HP_DETz config failed\n", __func__);
