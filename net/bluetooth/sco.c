@@ -177,6 +177,7 @@ static int sco_connect(struct sock *sk)
 {
 	bdaddr_t *src = &bt_sk(sk)->src;
 	bdaddr_t *dst = &bt_sk(sk)->dst;
+	__u16 pkt_type = sco_pi(sk)->pkt_type;
 	struct sco_conn *conn;
 	struct hci_conn *hcon;
 	struct hci_dev  *hdev;
@@ -192,10 +193,13 @@ static int sco_connect(struct sock *sk)
 
 	if (lmp_esco_capable(hdev) && !disable_esco)
 		type = ESCO_LINK;
-	else
+	else {
 		type = SCO_LINK;
+		pkt_type &= SCO_ESCO_MASK;
+	}
 
-	hcon = hci_connect(hdev, type, dst, BT_SECURITY_LOW, HCI_AT_NO_BONDING);
+	hcon = hci_connect(hdev, type, pkt_type, dst,
+					BT_SECURITY_LOW, HCI_AT_NO_BONDING);
 	if (IS_ERR(hcon)) {
 		err = PTR_ERR(hcon);
 		goto done;
@@ -486,6 +490,7 @@ static int sco_sock_bind(struct socket *sock, struct sockaddr *addr, int addr_le
 	} else {
 		/* Save source address */
 		bacpy(&bt_sk(sk)->src, &sa->sco_bdaddr);
+		sco_pi(sk)->pkt_type = sa->sco_pkt_type;
 		sk->sk_state = BT_BOUND;
 	}
 
@@ -519,6 +524,7 @@ static int sco_sock_connect(struct socket *sock, struct sockaddr *addr, int alen
 
 	/* Set destination address and psm */
 	bacpy(&bt_sk(sk)->dst, &sa->sco_bdaddr);
+	sco_pi(sk)->pkt_type = sa->sco_pkt_type;
 
 	err = sco_connect(sk);
 	if (err)
@@ -625,6 +631,7 @@ static int sco_sock_getname(struct socket *sock, struct sockaddr *addr, int *len
 		bacpy(&sa->sco_bdaddr, &bt_sk(sk)->dst);
 	else
 		bacpy(&sa->sco_bdaddr, &bt_sk(sk)->src);
+	sa->sco_pkt_type = sco_pi(sk)->pkt_type;
 
 	return 0;
 }
