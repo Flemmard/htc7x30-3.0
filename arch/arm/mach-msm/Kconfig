@@ -1591,6 +1591,8 @@ config MSM_CPU_FREQ_MIN
 
 endif # CPU_FREQ_MSM
 
+if PERFLOCK
+
 config MSM_CPU_FREQ_ONDEMAND_MAX
         int "Max"
         default 384000
@@ -1598,6 +1600,14 @@ config MSM_CPU_FREQ_ONDEMAND_MAX
 config MSM_CPU_FREQ_ONDEMAND_MIN
         int "Min"
         default 245760
+
+endif # PERFLOCK
+
+config ACPUCLOCK_OVERCLOCKING
+	bool "Enable support for CPU overclocking"
+	default n
+	depends on CPU_FREQ && !PERFLOCK
+	depends on ARCH_MSM7X30
 
 config MSM_CPU_AVS
 	bool "Enable software controlled Adaptive Voltage Scaling (AVS)"
