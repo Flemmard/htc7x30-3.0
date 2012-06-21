@@ -158,6 +158,11 @@ static int acpuclk_set_acpu_vdd(struct clkctl_acpu_speed *s)
 	else /* Wait for voltage to stabilize. */
 		udelay(62);
 
+#ifdef CONFIG_ACPUCLOCK_OVERCLOCKING
+	if (!ret)
+		return 0;
+#endif
+
 	return ret;
 }
 
@@ -453,11 +458,14 @@ static inline void setup_cpufreq_table(void) { }
 void __init pll2_fixup(void)
 {
 	struct clkctl_acpu_speed *speed = acpu_freq_tbl;
+#ifndef CONFIG_ACPUCLOCK_OVERCLOCKING
 	u8 pll2_l = readl_relaxed(PLL2_L_VAL_ADDR) & 0xFF;
+#endif
 
 	for ( ; speed->acpu_clk_khz; speed++) {
 		if (speed->src != PLL_2)
 			backup_s = speed;
+#ifndef CONFIG_ACPUCLOCK_OVERCLOCKING
 		/* Base on PLL2_L_VAL_ADDR to switch acpu speed */
 		else {
 			if (speed->pll_rate && speed->pll_rate->l != pll2_l)
@@ -468,10 +476,13 @@ void __init pll2_fixup(void)
 			speed->acpu_clk_khz = 0;
 			return;
 		}
+#endif
 	}
 
+#ifndef CONFIG_ACPUCLOCK_OVERCLOCKING
 	pr_err("Unknown PLL2 lval %d\n", pll2_l);
 	BUG();
+#endif
 }
 
 #define RPM_BYPASS_MASK	(1 << 3)
