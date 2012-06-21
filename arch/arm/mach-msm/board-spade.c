@@ -2374,102 +2374,6 @@ static struct platform_device cable_detect_device = {
 	},
 };
 
-static struct platform_device *devices[] __initdata = {
-        &ram_console_device,
-#if defined(CONFIG_SERIAL_MSM) || defined(CONFIG_MSM_SERIAL_DEBUGGER)
-        &msm_device_uart2,
-#endif
-#ifdef CONFIG_MSM_PROC_COMM_REGULATOR
-        &msm_proccomm_regulator_dev,
-#endif
-        &asoc_msm_pcm,
-        &asoc_msm_dai0,
-        &asoc_msm_dai1,
-#if defined(CONFIG_SND_MSM_MVS_DAI_SOC)
-        &asoc_msm_mvs,
-        &asoc_mvs_dai0,
-        &asoc_mvs_dai1,
-#endif
-        &msm_device_smd,
-        &msm_device_dmov,
-#if 0
-        &smc91x_device,
-        &smsc911x_device,
-        &msm_device_nand,
-#endif
-        &qsd_device_spi,
-#ifdef CONFIG_MSM_SSBI
-        &msm_device_ssbi_pmic1,
-#endif
-#ifdef CONFIG_I2C_SSBI
-	//        &msm_device_ssbi6,
-        &msm_device_ssbi7,
-#endif
-        &android_pmem_device,
-        &msm_migrate_pages_device,
-#ifdef CONFIG_MSM_ROTATOR
-        &msm_rotator_device,
-#endif
-        &android_pmem_adsp_device,
-        &android_pmem_audio_device,
-        &msm_device_i2c,
-        &msm_device_i2c_2,
-        &hs_device,
-#if defined(CONFIG_MSM7KV2_1X_AUDIO) || defined(CONFIG_MSM7KV2_AUDIO)
-        &msm_aictl_device,
-        &msm_mi2s_device,
-        &msm_lpa_device,
-        &msm_aux_pcm_device,
-#endif
-
-        &msm_device_adspdec,
-        &qup_device_i2c,
-#if defined(CONFIG_MARIMBA_CORE) && \
-   (defined(CONFIG_MSM_BT_POWER) || defined(CONFIG_MSM_BT_POWER_MODULE))
-        /*&msm_bt_power_device,*/
-#endif
-        &msm_kgsl_3d0,
-        &msm_kgsl_2d0,
-        &msm_device_vidc_720p,
-#ifdef CONFIG_MSM_GEMINI
-        &msm_gemini_device,
-#endif
-#ifdef CONFIG_MSM_VPE
-        &msm_vpe_device,
-#endif
-#if defined(CONFIG_TSIF) || defined(CONFIG_TSIF_MODULE)
-        &msm_device_tsif,
-#endif
-#ifdef CONFIG_MSM_SDIO_AL
-        /* &msm_device_sdio_al, */
-#endif
-
-#if defined(CONFIG_CRYPTO_DEV_QCRYPTO) || \
-                defined(CONFIG_CRYPTO_DEV_QCRYPTO_MODULE)
-        &qcrypto_device,
-#endif
-
-#if defined(CONFIG_CRYPTO_DEV_QCEDEV) || \
-                defined(CONFIG_CRYPTO_DEV_QCEDEV_MODULE)
-        &qcedev_device,
-#endif
-
-        &htc_battery_pdev,
-	&ds2746_battery_pdev,
-        &msm_ebi0_thermal,
-        &msm_ebi1_thermal,
-#ifdef CONFIG_SERIAL_MSM_HS
-        &msm_device_uart_dm1,
-#endif
-#ifdef CONFIG_BT
-        &spade_rfkill,
-#endif
-
-
-        &pm8058_leds,
-        &cable_detect_device,
-};
-
 static struct msm_gpio msm_i2c_gpios_hw[] = {
 	{ GPIO_CFG(70, 1, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA), "i2c_scl" },
 	{ GPIO_CFG(71, 1, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA), "i2c_sda" },
@@ -2602,6 +2506,271 @@ static struct msm_i2c_ssbi_platform_data msm_i2c_ssbi6_pdata = {
 static struct msm_i2c_ssbi_platform_data msm_i2c_ssbi7_pdata = {
 	.rsl_id = "D:CODEC_SSBI",
 	.controller_type = MSM_SBI_CTRL_SSBI,
+};
+#endif
+
+static struct i2c_board_info msm_camera_boardinfo[] __initdata = {
+#ifdef CONFIG_OV8810
+	{
+		I2C_BOARD_INFO("ov8810", 0x6C >> 1),
+	},
+#endif
+#ifdef CONFIG_S5K3H1GX
+	{
+		I2C_BOARD_INFO("s5k3h1gx", 0x20 >> 1),
+	},
+#endif
+};
+
+static uint32_t camera_off_gpio_table[] = {
+	/* parallel CAMERA interfaces */
+	PCOM_GPIO_CFG(SPADE_CAM_RST,  0, GPIO_OUTPUT, GPIO_PULL_DOWN, GPIO_2MA), /* RST */
+	PCOM_GPIO_CFG(SPADE_CAM_PWD,  0, GPIO_OUTPUT, GPIO_PULL_DOWN, GPIO_2MA), /* PWD */
+	PCOM_GPIO_CFG(2,  0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_4MA), /* DAT2 */
+	PCOM_GPIO_CFG(3,  0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_4MA), /* DAT3 */
+	PCOM_GPIO_CFG(4,  0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_4MA), /* DAT4 */
+	PCOM_GPIO_CFG(5,  0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_4MA), /* DAT5 */
+	PCOM_GPIO_CFG(6,  0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_4MA), /* DAT6 */
+	PCOM_GPIO_CFG(7,  0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_4MA), /* DAT7 */
+	PCOM_GPIO_CFG(8,  0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_4MA), /* DAT8 */
+	PCOM_GPIO_CFG(9,  0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_4MA), /* DAT9 */
+	PCOM_GPIO_CFG(10, 0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_4MA), /* DAT10 */
+	PCOM_GPIO_CFG(11, 0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_4MA), /* DAT11 */
+	PCOM_GPIO_CFG(12, 0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_4MA), /* PCLK */
+	PCOM_GPIO_CFG(13, 0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_4MA), /* HSYNC_IN */
+	PCOM_GPIO_CFG(14, 0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_4MA), /* VSYNC_IN */
+	PCOM_GPIO_CFG(15, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_2MA), /* MCLK */
+
+};
+
+static uint32_t camera_on_gpio_table[] = {
+	/* parallel CAMERA interfaces */
+	PCOM_GPIO_CFG(SPADE_CAM_RST,   0, GPIO_OUTPUT, GPIO_PULL_DOWN, GPIO_2MA), /* RST */
+	PCOM_GPIO_CFG(SPADE_CAM_PWD,   0, GPIO_OUTPUT, GPIO_PULL_DOWN, GPIO_2MA), /* PWD */
+	PCOM_GPIO_CFG(2,  1, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA), /* DAT2 */
+	PCOM_GPIO_CFG(3,  1, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA), /* DAT3 */
+	PCOM_GPIO_CFG(4,  1, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA), /* DAT4 */
+	PCOM_GPIO_CFG(5,  1, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA), /* DAT5 */
+	PCOM_GPIO_CFG(6,  1, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA), /* DAT6 */
+	PCOM_GPIO_CFG(7,  1, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA), /* DAT7 */
+	PCOM_GPIO_CFG(8,  1, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA), /* DAT8 */
+	PCOM_GPIO_CFG(9,  1, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA), /* DAT9 */
+	PCOM_GPIO_CFG(10, 1, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA), /* DAT10 */
+	PCOM_GPIO_CFG(11, 1, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA), /* DAT11 */
+	PCOM_GPIO_CFG(12, 1, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA), /* PCLK */
+	PCOM_GPIO_CFG(13, 1, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA), /* HSYNC_IN */
+	PCOM_GPIO_CFG(14, 1, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA), /* VSYNC_IN */
+	PCOM_GPIO_CFG(15, 1, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_16MA), /* MCLK */
+
+};
+
+static int spade_sensor_power_enable(char *power, unsigned volt)
+{
+	struct vreg *vreg_gp;
+	int rc;
+
+	if (power == NULL)
+		return EIO;
+
+	vreg_gp = vreg_get(NULL, power);
+	if (IS_ERR(vreg_gp)) {
+		pr_err("%s: vreg_get(%s) failed (%ld)\n",
+			__func__, power, PTR_ERR(vreg_gp));
+		return EIO;
+	}
+
+	rc = vreg_set_level(vreg_gp, volt);
+	if (rc) {
+		pr_err("%s: vreg wlan set %s level failed (%d)\n",
+			__func__, power, rc);
+		return EIO;
+	}
+
+	rc = vreg_enable(vreg_gp);
+	if (rc) {
+		pr_err("%s: vreg enable %s failed (%d)\n",
+			__func__, power, rc);
+		return EIO;
+	}
+	return rc;
+}
+
+static int spade_sensor_power_disable(char *power)
+{
+	struct vreg *vreg_gp;
+	int rc;
+	vreg_gp = vreg_get(NULL, power);
+	if (IS_ERR(vreg_gp)) {
+		pr_err("%s: vreg_get(%s) failed (%ld)\n",
+			__func__, power, PTR_ERR(vreg_gp));
+		return EIO;
+	}
+
+	rc = vreg_disable(vreg_gp);
+	if (rc) {
+		pr_err("%s: vreg disable %s failed (%d)\n",
+			__func__, power, rc);
+		return EIO;
+	}
+	return rc;
+}
+
+static int spade_sensor_vreg_on(void)
+{
+	int rc;
+	pr_info("%s camera vreg on\n", __func__);
+
+	/*camera power down*/
+	/*
+	gpio_set_value(SPADE_CAM_PWD, 1);
+	udelay(200);
+	*/
+
+	/*camera IO power*/
+	rc = spade_sensor_power_enable("gp2", 1850);
+
+	/*camera analog power*/
+	/* This delay is just temporary work-around,*/
+	/*and will remove when HW power team fix */
+	/*the power up two stage problem with pmic */
+	udelay(500);
+	if (system_rev > 0) {
+		/*Board XB and after*/
+		rc = spade_sensor_power_enable("gp7", 2850);
+	} else {
+		/*Board XA*/
+		gpio_set_value(SPADE_CAM_A2V85_EN_XA, 1);
+	}
+
+	/*camera digital power*/
+	/*rc = spade_sensor_power_enable("wlan", 1500);*/
+
+	/*camera VCM power*/
+	rc = spade_sensor_power_enable("gp4", 2850);
+
+	return rc;
+}
+
+static int spade_sensor_vreg_off(void)
+{
+	int rc;
+	/*camera analog power*/
+	if (system_rev > 0) {
+		/*Board XB and after*/
+		rc = spade_sensor_power_disable("gp7");
+	} else {
+		/*Board XA*/
+		gpio_set_value(SPADE_CAM_A2V85_EN_XA, 0);
+	}
+	/*camera digital power*/
+	/*rc = spade_sensor_power_disable("wlan");*/
+	/*camera IO power*/
+	rc = spade_sensor_power_disable("gp2");
+	/*camera VCM power*/
+	rc = spade_sensor_power_disable("gp4");
+	return rc;
+}
+
+
+static int camera_main_probed = 0;
+static int spade_camera_main_get_probe(void)
+{
+	return camera_main_probed;
+}
+static void spade_camera_main_set_probe(int probed)
+{
+	camera_main_probed = probed;
+}
+
+
+static void config_spade_camera_on_gpios(void)
+{
+	config_gpio_table(camera_on_gpio_table,
+		ARRAY_SIZE(camera_on_gpio_table));
+}
+
+static void config_spade_camera_off_gpios(void)
+{
+	config_gpio_table(camera_off_gpio_table,
+		ARRAY_SIZE(camera_off_gpio_table));
+}
+
+static struct resource msm_camera_resources[] = {
+	{
+		.start	= 0xA6000000,
+		.end	= 0xA6000000 + SZ_1M - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.start	= INT_VFE,
+		.end	= INT_VFE,
+		.flags	= IORESOURCE_IRQ,
+	},
+};
+
+static struct msm_camera_device_platform_data msm_camera_device_data = {
+	.camera_gpio_on  = config_spade_camera_on_gpios,
+	.camera_gpio_off = config_spade_camera_off_gpios,
+	.ioext.mdcphy = MSM_MDC_PHYS,
+	.ioext.mdcsz  = MSM_MDC_SIZE,
+	.ioext.appphy = MSM_CLK_CTL_PHYS,
+	.ioext.appsz  = MSM_CLK_CTL_SIZE,
+	.ioext.camifpadphy = 0xAB000000,
+	.ioext.camifpadsz  = 0x00000400
+};
+
+static struct camera_flash_cfg msm_camera_sensor_flash_cfg = {
+	.camera_flash		= flashlight_control,
+	.num_flash_levels	= FLASHLIGHT_NUM,
+	.low_temp_limit		= 5,
+	.low_cap_limit		= 10,
+};
+
+#ifdef CONFIG_OV8810
+static struct msm_camera_sensor_info msm_camera_sensor_ov8810_data = {
+	.sensor_name = "ov8810",
+	.sensor_reset = SPADE_CAM_RST,
+	.sensor_pwd = SPADE_CAM_PWD,
+	.camera_power_on = spade_sensor_vreg_on,
+	.camera_power_off = spade_sensor_vreg_off,
+	.camera_main_get_probe = spade_camera_main_get_probe,
+	.camera_main_set_probe = spade_camera_main_set_probe,
+	.pdata = &msm_camera_device_data,
+	.flash_type = MSM_CAMERA_FLASH_LED,
+	.resource = msm_camera_resources,
+	.num_resources = ARRAY_SIZE(msm_camera_resources),
+	.flash_cfg = &msm_camera_sensor_flash_cfg,
+};
+
+static struct platform_device msm_camera_sensor_ov8810 = {
+	.name      = "msm_camera_ov8810",
+	.dev       = {
+		.platform_data = &msm_camera_sensor_ov8810_data,
+	},
+};
+#endif
+#ifdef CONFIG_S5K3H1GX
+static struct msm_camera_sensor_info msm_camera_sensor_s5k3h1gx_data = {
+	.sensor_name = "s5k3h1gx",
+	.vcm_pwd = SPADE_CAM_RST,
+	.sensor_pwd = SPADE_CAM_PWD,
+	.camera_power_on = spade_sensor_vreg_on,
+	.camera_power_off = spade_sensor_vreg_off,
+	.camera_main_get_probe = spade_camera_main_get_probe,
+	.camera_main_set_probe = spade_camera_main_set_probe,
+	.pdata = &msm_camera_device_data,
+	.flash_type = MSM_CAMERA_FLASH_LED,
+	.resource = msm_camera_resources,
+	.num_resources = ARRAY_SIZE(msm_camera_resources),
+	.flash_cfg = &msm_camera_sensor_flash_cfg,
+	.csi_if = 0,
+};
+
+static struct platform_device msm_camera_sensor_s5k3h1gx = {
+  .name = "msm_camera_s5k3h1gx",
+  .dev = {
+    .platform_data = &msm_camera_sensor_s5k3h1gx_data,
+  },
 };
 #endif
 
@@ -3598,6 +3767,108 @@ static void spade_te_gpio_config(void)
 
 __setup("androidboot.serialno=", board_serialno_setup);
 
+static struct platform_device *devices[] __initdata = {
+        &ram_console_device,
+#if defined(CONFIG_SERIAL_MSM) || defined(CONFIG_MSM_SERIAL_DEBUGGER)
+        &msm_device_uart2,
+#endif
+#ifdef CONFIG_MSM_PROC_COMM_REGULATOR
+        &msm_proccomm_regulator_dev,
+#endif
+        &asoc_msm_pcm,
+        &asoc_msm_dai0,
+        &asoc_msm_dai1,
+#if defined(CONFIG_SND_MSM_MVS_DAI_SOC)
+        &asoc_msm_mvs,
+        &asoc_mvs_dai0,
+        &asoc_mvs_dai1,
+#endif
+        &msm_device_smd,
+        &msm_device_dmov,
+#if 0
+        &smc91x_device,
+        &smsc911x_device,
+        &msm_device_nand,
+#endif
+        &qsd_device_spi,
+#ifdef CONFIG_MSM_SSBI
+        &msm_device_ssbi_pmic1,
+#endif
+#ifdef CONFIG_I2C_SSBI
+        &msm_device_ssbi6,
+        &msm_device_ssbi7,
+#endif
+        &android_pmem_device,
+        &msm_migrate_pages_device,
+#ifdef CONFIG_MSM_ROTATOR
+        &msm_rotator_device,
+#endif
+        &android_pmem_adsp_device,
+        &android_pmem_audio_device,
+        &msm_device_i2c,
+        &msm_device_i2c_2,
+        &hs_device,
+#if defined(CONFIG_MSM7KV2_1X_AUDIO) || defined(CONFIG_MSM7KV2_AUDIO)
+        &msm_aictl_device,
+        &msm_mi2s_device,
+        &msm_lpa_device,
+        &msm_aux_pcm_device,
+#endif
+#ifdef CONFIG_OV8810
+        &msm_camera_sensor_ov8810,
+#endif
+#ifdef CONFIG_S5K3H1GX
+        &msm_camera_sensor_s5k3h1gx,
+#endif
+
+        &msm_device_adspdec,
+        &qup_device_i2c,
+#if defined(CONFIG_MARIMBA_CORE) && \
+   (defined(CONFIG_MSM_BT_POWER) || defined(CONFIG_MSM_BT_POWER_MODULE))
+        /*&msm_bt_power_device,*/
+#endif
+        &msm_kgsl_3d0,
+        &msm_kgsl_2d0,
+        &msm_device_vidc_720p,
+#ifdef CONFIG_MSM_GEMINI
+        &msm_gemini_device,
+#endif
+#ifdef CONFIG_MSM_VPE
+        &msm_vpe_device,
+#endif
+#if defined(CONFIG_TSIF) || defined(CONFIG_TSIF_MODULE)
+        &msm_device_tsif,
+#endif
+#ifdef CONFIG_MSM_SDIO_AL
+        /* &msm_device_sdio_al, */
+#endif
+
+#if defined(CONFIG_CRYPTO_DEV_QCRYPTO) || \
+                defined(CONFIG_CRYPTO_DEV_QCRYPTO_MODULE)
+        &qcrypto_device,
+#endif
+
+#if defined(CONFIG_CRYPTO_DEV_QCEDEV) || \
+                defined(CONFIG_CRYPTO_DEV_QCEDEV_MODULE)
+        &qcedev_device,
+#endif
+
+        &htc_battery_pdev,
+	&ds2746_battery_pdev,
+        &msm_ebi0_thermal,
+        &msm_ebi1_thermal,
+#ifdef CONFIG_SERIAL_MSM_HS
+        &msm_device_uart_dm1,
+#endif
+#ifdef CONFIG_BT
+        &spade_rfkill,
+#endif
+
+
+        &pm8058_leds,
+        &cable_detect_device,
+};
+
 static void __init spade_init(void)
 {
 	int rc = 0, i = 0;
@@ -3685,6 +3956,9 @@ static void __init spade_init(void)
 
 	i2c_register_board_info(0, i2c_compass_devices1,
 				ARRAY_SIZE(i2c_compass_devices1));
+
+	i2c_register_board_info(4 /* QUP ID */, msm_camera_boardinfo,
+				ARRAY_SIZE(msm_camera_boardinfo));
 
 #ifdef CONFIG_I2C_SSBI
 	msm_device_ssbi6.dev.platform_data = &msm_i2c_ssbi6_pdata;

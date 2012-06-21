@@ -286,6 +286,8 @@ struct msm_camera_sensor_info {
 	int (*camera_power_off)(void);
 	int use_rawchip;
 	int (*sensor_version)(void);
+	int (*camera_main_get_probe)(void);
+	void (*camera_main_set_probe)(int);
 #if 1 /* HTC to be removed */
 	/* HTC++ */
 	void(*camera_clk_switch)(void);
