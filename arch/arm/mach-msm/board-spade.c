@@ -2482,8 +2482,8 @@ static struct msm_i2c_platform_data qup_i2c_pdata = {
 static void __init qup_device_i2c_init(void)
 {
 	/* Remove the gpio_request due to i2c-qup.c is done so. */
-	if (msm_gpios_request(qup_i2c_gpios_hw, ARRAY_SIZE(qup_i2c_gpios_hw)))
-		pr_err("failed to request I2C gpios\n");
+  //	if (msm_gpios_request(qup_i2c_gpios_hw, ARRAY_SIZE(qup_i2c_gpios_hw)))
+  //		pr_err("failed to request I2C gpios\n");
 
 	qup_device_i2c.dev.platform_data = &qup_i2c_pdata;
 	/*This needs to be enabled only for OEMS*/
@@ -2500,12 +2500,10 @@ static void __init qup_device_i2c_init(void)
 
 static struct msm_i2c_ssbi_platform_data msm_i2c_ssbi6_pdata = {
 	.rsl_id = "D:PMIC_SSBI",
-	.controller_type = MSM_SBI_CTRL_SSBI2,
 };
 
 static struct msm_i2c_ssbi_platform_data msm_i2c_ssbi7_pdata = {
 	.rsl_id = "D:CODEC_SSBI",
-	.controller_type = MSM_SBI_CTRL_SSBI,
 };
 #endif
 
@@ -3989,6 +3987,9 @@ static void __init spade_init(void)
 		(smem_get_entry(SMEM_POWER_ON_STATUS_INFO, &smem_size));
 	printk(KERN_NOTICE "Boot Reason = 0x%02x\n", boot_reason);
 
+#ifdef CONFIG_MSM_CAMERA
+          config_gpio_table(camera_on_gpio_table, ARRAY_SIZE(camera_on_gpio_table));
+#endif
 	properties_kobj = kobject_create_and_add("board_properties", NULL);
 	if (properties_kobj)
 		rc = sysfs_create_group(properties_kobj,
