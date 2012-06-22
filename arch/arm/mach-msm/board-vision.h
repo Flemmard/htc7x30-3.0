@@ -189,7 +189,7 @@ unsigned int vision_get_engineerid(void);
 
 int vision_init_mmc(unsigned int sys_rev);
 void __init vision_audio_init(void);
-int vision_init_keypad(void);
+int __init vision_init_keypad(void);
 int __init vision_wifi_init(void);
 #ifdef CONFIG_MICROP_COMMON
 void __init vision_microp_init(void);

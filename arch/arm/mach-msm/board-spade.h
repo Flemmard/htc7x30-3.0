@@ -195,7 +195,7 @@ void __init spade_microp_init(void);
 #endif
 int spade_init_mmc(unsigned int sys_rev);
 void __init spade_audio_init(void);
-int spade_init_keypad(void);
+int __init spade_init_keypad(void);
 int __init spade_wifi_init(void);
 int __init spade_init_panel(void);
 #ifdef CONFIG_USB_ACCESSORY_DETECT_BY_ADC
