@@ -3059,18 +3059,6 @@ void spade_add_usb_devices(void)
 	printk(KERN_INFO "%s rev: %d\n", __func__, system_rev);
 	android_usb_pdata.products[0].product_id =
 			android_usb_pdata.product_id;
-
-
-	/* diag bit set */
-	if (get_radio_flag() & 0x20000)
-		android_usb_pdata.diag_init = 1;
-
-	/* add cdrom support in normal mode */
-	if (board_mfg_mode() == 0) {
-		android_usb_pdata.nluns = 3;
-		android_usb_pdata.cdrom_lun = 0x4;
-	}
-
 	msm_device_gadget_peripheral.dev.platform_data = &msm_gadget_pdata;
 #if defined(CONFIG_USB_OTG)
 	msm_device_otg.dev.platform_data = &msm_otg_pdata;
@@ -3327,7 +3315,11 @@ static void __init spade_init(void)
 		pr_err("failed to create board_properties\n");
 
 	i2c_register_board_info(0, i2c_devices,	ARRAY_SIZE(i2c_devices));
-       	spade_init_keypad();
+       	rc = spade_init_keypad();
+        if (rc != 0)
+          printk(KERN_ERR "%s: unable to init keypad (err=%d)\n", rc);
+        else
+          printk(KERN_ERR "%s: succeeded to init keypad\n");
 #ifdef CONFIG_MDP4_HW_VSYNC
 	spade_te_gpio_config();
 #endif
