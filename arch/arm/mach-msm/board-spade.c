@@ -3315,11 +3315,7 @@ static void __init spade_init(void)
 		pr_err("failed to create board_properties\n");
 
 	i2c_register_board_info(0, i2c_devices,	ARRAY_SIZE(i2c_devices));
-       	rc = spade_init_keypad();
-        if (rc != 0)
-          printk(KERN_ERR "%s: unable to init keypad (err=%d)\n", rc);
-        else
-          printk(KERN_ERR "%s: succeeded to init keypad\n");
+       	spade_init_keypad();
 #ifdef CONFIG_MDP4_HW_VSYNC
 	spade_te_gpio_config();
 #endif
