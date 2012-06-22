@@ -3398,13 +3398,6 @@ static void __init spade_init(void)
 	msm_device_ssbi6.dev.platform_data = &msm_i2c_ssbi6_pdata;
 	msm_device_ssbi7.dev.platform_data = &msm_i2c_ssbi7_pdata;
 #endif
-/*
-	if (machine_is_msm7x30_fluid())
-		i2c_register_board_info(0, msm_isa1200_board_info,
-			ARRAY_SIZE(msm_isa1200_board_info));
-	if (machine_is_msm7x30_surf())
-		platform_device_register(&flip_switch_device);
-*/
 	pm8058_gpios_init();
 
 #if defined(CONFIG_MSM_RMT_STORAGE_CLIENT)
