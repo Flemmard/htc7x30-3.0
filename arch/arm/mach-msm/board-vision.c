@@ -107,9 +107,11 @@
 #include "board-vision.h"
 #include "board-msm7x30-regulator.h"
 #include <mach/board_htc.h>
-
 #ifdef CONFIG_PERFLOCK
 #include <mach/perflock.h>
+#endif
+#ifdef CONFIG_BT
+#include <mach/htc_bdaddress.h>
 #endif
 
 #define GPIO_2MA	0
@@ -120,41 +122,6 @@
 #define GPIO_12MA	5
 #define GPIO_14MA	6
 #define GPIO_16MA	7
-
-#ifdef CONFIG_BT
-#include <mach/htc_bdaddress.h>
-#endif
-
-#define GPIO_2MA       0
-#define PMIC_VREG_WLAN_LEVEL	2900
-
-#define ADV7520_I2C_ADDR	0x39
-
-#define FPGA_SDCC_STATUS       0x8E0001A8
-
-#define FPGA_OPTNAV_GPIO_ADDR	0x8E000026
-#define OPTNAV_I2C_SLAVE_ADDR	(0xB0 >> 1)
-
-/* Macros assume PMIC GPIOs start at 0 */
-
-struct pm8xxx_gpio_init_info {
-	unsigned			gpio;
-	struct pm_gpio			config;
-};
-
-#ifdef CONFIG_MICROP_COMMON
-void __init vision_microp_init(void);
-#endif
-
-int __init vision_init_panel(void);
-
-static unsigned int engineerid;
-extern unsigned long msm_fb_base;
-
-unsigned int vision_get_engineerid(void)
-{
-	return engineerid;
-}
 
 #define GPIO_INPUT      0
 #define GPIO_OUTPUT     1
@@ -169,6 +136,24 @@ unsigned int vision_get_engineerid(void)
 		(((dir) & 0x1) << 14)           | \
 		(((pull) & 0x3) << 15)          | \
 		(((drvstr) & 0xF) << 17))
+
+struct pm8xxx_gpio_init_info {
+	unsigned			gpio;
+	struct pm_gpio			config;
+};
+
+#ifdef CONFIG_MICROP_COMMON
+void __init vision_microp_init(void);
+#endif
+int __init vision_init_panel(void);
+
+static unsigned int engineerid;
+extern unsigned long msm_fb_base;
+
+unsigned int vision_get_engineerid(void)
+{
+	return engineerid;
+}
 
 #if defined(CONFIG_MSM7KV2_1X_AUDIO) || defined(CONFIG_MSM7KV2_AUDIO)
 static struct resource msm_aictl_resources[] = {
@@ -664,20 +649,6 @@ static struct microp_function_config microp_functions[] = {
 		.int_pin = 1 << 8,
 	},
 };
-static struct microp_function_config microp_lightsensor_function = {
-	.name = "light_sensor",
-	.category = MICROP_FUNCTION_LSENSOR,
-	.levels = { 0x1, 0x3, 0x5, 0x13, 0x1A, 0x45, 0xDB, 0x135, 0x1F2, 0x3FF },
-	.channel = 3,
-	.int_pin = 1 << 9,
-	.golden_adc = 0xC0,
-        .ls_power = capella_cm3602_power,
-};
-
-static struct lightsensor_platform_data lightsensor_data = {
-	.config = &microp_lightsensor_function,
-	.irq = MSM_uP_TO_INT(9),
-};
 
 static struct microp_led_config up_led_config[] = {
 	{
@@ -699,6 +670,21 @@ static struct microp_led_config up_led_config[] = {
 		.name = "jogball-backlight",
 		.type = LED_JOGBALL,
 	},
+};
+
+static struct microp_function_config microp_lightsensor_function = {
+	.name = "light_sensor",
+	.category = MICROP_FUNCTION_LSENSOR,
+	.levels = { 0x1, 0x3, 0x5, 0x13, 0x1A, 0x45, 0xDB, 0x135, 0x1F2, 0x3FF },
+	.channel = 3,
+	.int_pin = 1 << 9,
+	.golden_adc = 0xC0,
+        .ls_power = capella_cm3602_power,
+};
+
+static struct lightsensor_platform_data lightsensor_data = {
+	.config = &microp_lightsensor_function,
+	.irq = MSM_uP_TO_INT(9),
 };
 
 static struct microp_led_platform_data microp_leds_data = {
@@ -1258,149 +1244,6 @@ static void msm_marimba_shutdown_power(void)
 	}
 };
 
-#if 0
-struct vreg *fm_regulator;
-static int fm_radio_setup(struct marimba_fm_platform_data *pdata)
-{
-	int rc;
-	uint32_t irqcfg;
-	const char *id = "FMPW";
-
-	int bahama_not_marimba = bahama_present();
-
-	if (bahama_not_marimba == -1) {
-		printk(KERN_WARNING "%s: bahama_present: %d\n",
-				__func__, bahama_not_marimba);
-		return -ENODEV;
-	}
-	if (bahama_not_marimba)
-		fm_regulator = vreg_get(NULL, "s3");
-	else
-		fm_regulator = vreg_get(NULL, "s2");
-
-	if (IS_ERR(fm_regulator)) {
-		printk(KERN_ERR "%s: vreg get failed (%ld)\n",
-			__func__, PTR_ERR(fm_regulator));
-		return -1;
-	}
-	if (!bahama_not_marimba) {
-
-		rc = pmapp_vreg_level_vote(id, PMAPP_VREG_S2, 1300);
-
-		if (rc < 0) {
-			printk(KERN_ERR "%s: voltage level vote failed (%d)\n",
-				__func__, rc);
-			return rc;
-		}
-	}
-	rc = vreg_enable(fm_regulator);
-	if (rc) {
-		printk(KERN_ERR "%s: vreg_enable() = %d\n",
-					__func__, rc);
-		return rc;
-	}
-
-	rc = pmapp_clock_vote(id, PMAPP_CLOCK_ID_DO,
-					  PMAPP_CLOCK_VOTE_ON);
-	if (rc < 0) {
-		printk(KERN_ERR "%s: clock vote failed (%d)\n",
-			__func__, rc);
-		goto fm_clock_vote_fail;
-	}
-	/*Request the Clock Using GPIO34/AP2MDM_MRMBCK_EN in case
-	of svlte*/
-	if (machine_is_msm8x55_svlte_surf() ||
-			machine_is_msm8x55_svlte_ffa())	{
-		rc = marimba_gpio_config(1);
-		if (rc < 0)
-			printk(KERN_ERR "%s: clock enable for svlte : %d\n",
-						__func__, rc);
-	}
-	irqcfg = GPIO_CFG(147, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL,
-					GPIO_CFG_2MA);
-	rc = gpio_tlmm_config(irqcfg, GPIO_CFG_ENABLE);
-	if (rc) {
-		printk(KERN_ERR "%s: gpio_tlmm_config(%#x)=%d\n",
-				__func__, irqcfg, rc);
-		rc = -EIO;
-		goto fm_gpio_config_fail;
-
-	}
-	return 0;
-fm_gpio_config_fail:
-	pmapp_clock_vote(id, PMAPP_CLOCK_ID_DO,
-				  PMAPP_CLOCK_VOTE_OFF);
-fm_clock_vote_fail:
-	vreg_disable(fm_regulator);
-	return rc;
-
-};
-
-static void fm_radio_shutdown(struct marimba_fm_platform_data *pdata)
-{
-	int rc;
-	const char *id = "FMPW";
-	uint32_t irqcfg = GPIO_CFG(147, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_UP,
-					GPIO_CFG_2MA);
-
-	int bahama_not_marimba = bahama_present();
-	if (bahama_not_marimba == -1) {
-		printk(KERN_WARNING "%s: bahama_present: %d\n",
-			__func__, bahama_not_marimba);
-		return;
-	}
-
-	rc = gpio_tlmm_config(irqcfg, GPIO_CFG_ENABLE);
-	if (rc) {
-		printk(KERN_ERR "%s: gpio_tlmm_config(%#x)=%d\n",
-				__func__, irqcfg, rc);
-	}
-	if (fm_regulator != NULL) {
-		rc = vreg_disable(fm_regulator);
-
-		if (rc) {
-			printk(KERN_ERR "%s: return val: %d\n",
-					__func__, rc);
-		}
-		fm_regulator = NULL;
-	}
-	rc = pmapp_clock_vote(id, PMAPP_CLOCK_ID_DO,
-					  PMAPP_CLOCK_VOTE_OFF);
-	if (rc < 0)
-		printk(KERN_ERR "%s: clock_vote return val: %d\n",
-						__func__, rc);
-
-	/*Disable the Clock Using GPIO34/AP2MDM_MRMBCK_EN in case
-	of svlte*/
-	if (machine_is_msm8x55_svlte_surf() ||
-			machine_is_msm8x55_svlte_ffa())	{
-		rc = marimba_gpio_config(0);
-		if (rc < 0)
-			printk(KERN_ERR "%s: clock disable for svlte : %d\n",
-						__func__, rc);
-	}
-
-
-	if (!bahama_not_marimba)	{
-		rc = pmapp_vreg_level_vote(id, PMAPP_VREG_S2, 0);
-
-		if (rc < 0)
-			printk(KERN_ERR "%s: vreg level vote return val: %d\n",
-						__func__, rc);
-	}
-}
-
-static struct marimba_fm_platform_data marimba_fm_pdata = {
-	.fm_setup =  fm_radio_setup,
-	.fm_shutdown = fm_radio_shutdown,
-	.irq = MSM_GPIO_TO_INT(147),
-	.vreg_s2 = NULL,
-	.vreg_xo_out = NULL,
-	.is_fm_soc_i2s_master = false,
-	.config_i2s_gpio = NULL,
-};
-#endif
-
 /* Slave id address for FM/CDC/QMEMBIST
  * Values can be programmed using Marimba slave id 0
  * should there be a conflict with other I2C devices
@@ -1849,19 +1692,6 @@ static struct i2c_board_info msm_marimba_board_info[] = {
 	}
 };
 
-static struct msm_handset_platform_data hs_platform_data = {
-	.hs_name = "7k_handset",
-	.pwr_key_delay_ms = 500, /* 0 will disable end key */
-};
-
-static struct platform_device hs_device = {
-	.name   = "msm-handset",
-	.id     = -1,
-	.dev    = {
-		.platform_data = &hs_platform_data,
-	},
-};
-
 static struct msm_pm_platform_data msm_pm_data[MSM_PM_SLEEP_MODE_NR] = {
 	[MSM_PM_SLEEP_MODE_POWER_COLLAPSE] = {
 		.idle_supported = 1,
@@ -2110,14 +1940,6 @@ static struct msm_otg_platform_data msm_otg_pdata = {
 	.cdr_autoreset		= CDR_AUTO_RESET_DISABLE,
 	.drv_ampl		= HS_DRV_AMPLITUDE_DEFAULT,
 	.se1_gating		= SE1_GATING_DISABLE,
-
-#if 0
-	.phy_init_seq		= phy_init_seq,
-	.mode			= USB_PERIPHERAL,
-	.otg_control		= OTG_PMIC_CONTROL,
-	.power_budget		= 750,
-	.phy_type = CI_45NM_INTEGRATED_PHY,
-#endif
 };
 
 static struct android_pmem_platform_data android_pmem_pdata = {
@@ -2170,128 +1992,6 @@ static struct platform_device android_pmem_audio_device = {
        .dev = { .platform_data = &android_pmem_audio_pdata },
 };
 
-#if defined(CONFIG_CRYPTO_DEV_QCRYPTO) || \
-		defined(CONFIG_CRYPTO_DEV_QCRYPTO_MODULE) || \
-		defined(CONFIG_CRYPTO_DEV_QCEDEV) || \
-		defined(CONFIG_CRYPTO_DEV_QCEDEV_MODULE)
-
-#define QCE_SIZE		0x10000
-#define QCE_0_BASE		0xA8400000
-
-#define QCE_HW_KEY_SUPPORT	1
-#define QCE_SHA_HMAC_SUPPORT	0
-#define QCE_SHARE_CE_RESOURCE	0
-#define QCE_CE_SHARED		0
-
-static struct resource qcrypto_resources[] = {
-	[0] = {
-		.start = QCE_0_BASE,
-		.end = QCE_0_BASE + QCE_SIZE - 1,
-		.flags = IORESOURCE_MEM,
-	},
-	[1] = {
-		.name = "crypto_channels",
-		.start = DMOV_CE_IN_CHAN,
-		.end = DMOV_CE_OUT_CHAN,
-		.flags = IORESOURCE_DMA,
-	},
-	[2] = {
-		.name = "crypto_crci_in",
-		.start = DMOV_CE_IN_CRCI,
-		.end = DMOV_CE_IN_CRCI,
-		.flags = IORESOURCE_DMA,
-	},
-	[3] = {
-		.name = "crypto_crci_out",
-		.start = DMOV_CE_OUT_CRCI,
-		.end = DMOV_CE_OUT_CRCI,
-		.flags = IORESOURCE_DMA,
-	},
-	[4] = {
-		.name = "crypto_crci_hash",
-		.start = DMOV_CE_HASH_CRCI,
-		.end = DMOV_CE_HASH_CRCI,
-		.flags = IORESOURCE_DMA,
-	},
-};
-
-static struct resource qcedev_resources[] = {
-	[0] = {
-		.start = QCE_0_BASE,
-		.end = QCE_0_BASE + QCE_SIZE - 1,
-		.flags = IORESOURCE_MEM,
-	},
-	[1] = {
-		.name = "crypto_channels",
-		.start = DMOV_CE_IN_CHAN,
-		.end = DMOV_CE_OUT_CHAN,
-		.flags = IORESOURCE_DMA,
-	},
-	[2] = {
-		.name = "crypto_crci_in",
-		.start = DMOV_CE_IN_CRCI,
-		.end = DMOV_CE_IN_CRCI,
-		.flags = IORESOURCE_DMA,
-	},
-	[3] = {
-		.name = "crypto_crci_out",
-		.start = DMOV_CE_OUT_CRCI,
-		.end = DMOV_CE_OUT_CRCI,
-		.flags = IORESOURCE_DMA,
-	},
-	[4] = {
-		.name = "crypto_crci_hash",
-		.start = DMOV_CE_HASH_CRCI,
-		.end = DMOV_CE_HASH_CRCI,
-		.flags = IORESOURCE_DMA,
-	},
-};
-
-#endif
-
-#if defined(CONFIG_CRYPTO_DEV_QCRYPTO) || \
-		defined(CONFIG_CRYPTO_DEV_QCRYPTO_MODULE)
-
-static struct msm_ce_hw_support qcrypto_ce_hw_suppport = {
-	.ce_shared = QCE_CE_SHARED,
-	.shared_ce_resource = QCE_SHARE_CE_RESOURCE,
-	.hw_key_support = QCE_HW_KEY_SUPPORT,
-	.sha_hmac = QCE_SHA_HMAC_SUPPORT,
-};
-
-static struct platform_device qcrypto_device = {
-	.name		= "qcrypto",
-	.id		= 0,
-	.num_resources	= ARRAY_SIZE(qcrypto_resources),
-	.resource	= qcrypto_resources,
-	.dev		= {
-		.coherent_dma_mask = DMA_BIT_MASK(32),
-		.platform_data = &qcrypto_ce_hw_suppport,
-	},
-};
-#endif
-
-#if defined(CONFIG_CRYPTO_DEV_QCEDEV) || \
-		defined(CONFIG_CRYPTO_DEV_QCEDEV_MODULE)
-
-static struct msm_ce_hw_support qcedev_ce_hw_suppport = {
-	.ce_shared = QCE_CE_SHARED,
-	.shared_ce_resource = QCE_SHARE_CE_RESOURCE,
-	.hw_key_support = QCE_HW_KEY_SUPPORT,
-	.sha_hmac = QCE_SHA_HMAC_SUPPORT,
-};
-static struct platform_device qcedev_device = {
-	.name		= "qce",
-	.id		= 0,
-	.num_resources	= ARRAY_SIZE(qcedev_resources),
-	.resource	= qcedev_resources,
-	.dev		= {
-		.coherent_dma_mask = DMA_BIT_MASK(32),
-		.platform_data = &qcedev_ce_hw_suppport,
-	},
-};
-
-#endif
 static struct htc_battery_platform_data htc_battery_pdev_data = {
 	.guage_driver = GUAGE_MODEM,
 	.charger = SWITCH_CHARGER_TPS65200,
@@ -2326,7 +2026,6 @@ static struct msm_serial_hs_platform_data msm_uart_dm1_pdata = {
 #ifdef CONFIG_SERIAL_MSM_HS_PURE_ANDROID
 	.exit_lpm_cb = bcm_bt_lpm_exit_lpm_locked,
 #endif
-
 	/* for bcm BT */
 	.bt_wakeup_pin_supported = 1,
 	.bt_wakeup_pin = VISION_GPIO_BT_CHIP_WAKE,
@@ -2349,6 +2048,49 @@ struct platform_device vision_bcm_bt_lpm_device = {
 	},
 };
 #endif
+#endif
+
+#ifdef CONFIG_MSM_GEMINI
+static struct resource msm_gemini_resources[] = {
+	{
+		.start  = 0xA3A00000,
+		.end    = 0xA3A00000 + 0x0150 - 1,
+		.flags  = IORESOURCE_MEM,
+	},
+	{
+		.start  = INT_JPEG,
+		.end    = INT_JPEG,
+		.flags  = IORESOURCE_IRQ,
+	},
+};
+
+static struct platform_device msm_gemini_device = {
+	.name           = "msm_gemini",
+	.resource       = msm_gemini_resources,
+	.num_resources  = ARRAY_SIZE(msm_gemini_resources),
+};
+#endif
+
+#ifdef CONFIG_MSM_VPE
+static struct resource msm_vpe_resources[] = {
+	{
+		.start	= 0xAD200000,
+		.end	= 0xAD200000 + SZ_1M - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.start	= INT_VPE,
+		.end	= INT_VPE,
+		.flags	= IORESOURCE_IRQ,
+	},
+};
+
+static struct platform_device msm_vpe_device = {
+       .name = "msm_vpe",
+       .id   = 0,
+       .num_resources = ARRAY_SIZE(msm_vpe_resources),
+       .resource = msm_vpe_resources,
+};
 #endif
 
 #ifdef CONFIG_MSM_CAMERA
@@ -2590,49 +2332,6 @@ static struct platform_device msm_camera_sensor_s5k4e1gx = {
 	},
 };
 
-#ifdef CONFIG_MSM_GEMINI
-static struct resource msm_gemini_resources[] = {
-	{
-		.start  = 0xA3A00000,
-		.end    = 0xA3A00000 + 0x0150 - 1,
-		.flags  = IORESOURCE_MEM,
-	},
-	{
-		.start  = INT_JPEG,
-		.end    = INT_JPEG,
-		.flags  = IORESOURCE_IRQ,
-	},
-};
-
-static struct platform_device msm_gemini_device = {
-	.name           = "msm_gemini",
-	.resource       = msm_gemini_resources,
-	.num_resources  = ARRAY_SIZE(msm_gemini_resources),
-};
-#endif
-
-#ifdef CONFIG_MSM_VPE
-static struct resource msm_vpe_resources[] = {
-	{
-		.start	= 0xAD200000,
-		.end	= 0xAD200000 + SZ_1M - 1,
-		.flags	= IORESOURCE_MEM,
-	},
-	{
-		.start	= INT_VPE,
-		.end	= INT_VPE,
-		.flags	= IORESOURCE_IRQ,
-	},
-};
-
-static struct platform_device msm_vpe_device = {
-       .name = "msm_vpe",
-       .id   = 0,
-       .num_resources = ARRAY_SIZE(msm_vpe_resources),
-       .resource = msm_vpe_resources,
-};
-#endif
-
 #endif /*CONFIG_MSM_CAMERA*/
 
 #ifdef CONFIG_BT
@@ -2647,7 +2346,6 @@ static struct msm_gpio mdm2ap_status = {
 	GPIO_CFG(77, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
 	"mdm2ap_status"
 };
-
 
 static int configure_mdm2ap_status(int on)
 {
@@ -2767,105 +2465,6 @@ static struct platform_device cable_detect_device = {
 	},
 };
 #endif
-static struct platform_device *devices[] __initdata = {
-        &ram_console_device,
-#if defined(CONFIG_SERIAL_MSM) || defined(CONFIG_MSM_SERIAL_DEBUGGER)
-        &msm_device_uart2,
-#endif
-#ifdef CONFIG_SERIAL_MSM_HS_PURE_ANDROID
-        &vision_bcm_bt_lpm_device,
-#endif
-#ifdef CONFIG_MSM_PROC_COMM_REGULATOR
-        &msm_proccomm_regulator_dev,
-#endif
-        &asoc_msm_pcm,
-        &asoc_msm_dai0,
-        &asoc_msm_dai1,
-#if defined(CONFIG_SND_MSM_MVS_DAI_SOC)
-        &asoc_msm_mvs,
-        &asoc_mvs_dai0,
-        &asoc_mvs_dai1,
-#endif
-        &msm_device_smd,
-        &msm_device_dmov,
-        &qsd_device_spi,
-#ifdef CONFIG_MSM_SSBI
-        &msm_device_ssbi_pmic1,
-#endif
-#ifdef CONFIG_I2C_SSBI
-        &msm_device_ssbi6,
-        &msm_device_ssbi7,
-#endif
-        &android_pmem_device,
-        &msm_migrate_pages_device,
-#ifdef CONFIG_MSM_ROTATOR
-        &msm_rotator_device,
-#endif
-        &android_pmem_adsp_device,
-        &android_pmem_audio_device,
-        &msm_device_i2c,
-        &msm_device_i2c_2,
-#ifdef CONFIG_INPUT_CAPELLA_CM3602
-        &capella_cm3602,
-#endif
-        &hs_device,
-#if defined(CONFIG_MSM7KV2_1X_AUDIO) || defined(CONFIG_MSM7KV2_AUDIO)
-        &msm_aictl_device,
-        &msm_mi2s_device,
-        &msm_lpa_device,
-        &msm_aux_pcm_device,
-#endif
-#ifdef CONFIG_S5K4E1GX
-        &msm_camera_sensor_s5k4e1gx,
-#endif
-
-        &msm_device_adspdec,
-        &qup_device_i2c,
-#if defined(CONFIG_MARIMBA_CORE) && \
-   (defined(CONFIG_MSM_BT_POWER) || defined(CONFIG_MSM_BT_POWER_MODULE))
-        /*&msm_bt_power_device,*/
-#endif
-        &msm_kgsl_3d0,
-        &msm_kgsl_2d0,
-        &msm_device_vidc_720p,
-#ifdef CONFIG_MSM_GEMINI
-        &msm_gemini_device,
-#endif
-#ifdef CONFIG_MSM_VPE
-        &msm_vpe_device,
-#endif
-#if defined(CONFIG_TSIF) || defined(CONFIG_TSIF_MODULE)
-        &msm_device_tsif,
-#endif
-#ifdef CONFIG_MSM_SDIO_AL
-        /* &msm_device_sdio_al, */
-#endif
-
-#if defined(CONFIG_CRYPTO_DEV_QCRYPTO) || \
-                defined(CONFIG_CRYPTO_DEV_QCRYPTO_MODULE)
-        &qcrypto_device,
-#endif
-
-#if defined(CONFIG_CRYPTO_DEV_QCEDEV) || \
-                defined(CONFIG_CRYPTO_DEV_QCEDEV_MODULE)
-        &qcedev_device,
-#endif
-
-        &htc_battery_pdev,
-        &msm_ebi0_thermal,
-        &msm_ebi1_thermal,
-#ifdef CONFIG_SERIAL_MSM_HS
-        &msm_device_uart_dm1,
-#endif
-#ifdef CONFIG_BT
-        &vision_rfkill,
-#endif
-#ifdef CONFIG_ARCH_MSM_FLASHLIGHT
-        &vision_flashlight_device,
-#endif
-        &pm8058_leds,
-	//	&cable_detect_device,
-};
 
 static struct msm_gpio msm_i2c_gpios_hw[] = {
 	{ GPIO_CFG(70, 1, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_16MA), "i2c_scl" },
@@ -3213,60 +2812,7 @@ out:
 }
 #endif
 
-#ifdef CONFIG_MMC_MSM_SDC4_SUPPORT
-
-#ifdef CONFIG_MMC_MSM_CARD_HW_DETECTION
-static unsigned int msm7x30_sdcc_slot_status(struct device *dev)
-{
-	return (unsigned int)
-		!gpio_get_value_cansleep(
-			PM8058_GPIO_PM_TO_SYS(VISION_GPIO_SDMC_CD_N));
-}
-#endif
-
-#ifdef CONFIG_MMC_MSM_SDC4_WP_SUPPORT
-static int msm_sdcc_get_wpswitch(struct device *dv)
-{
-	void __iomem *wp_addr = 0;
-	uint32_t ret = 0;
-	struct platform_device *pdev;
-
-	if (!(machine_is_msm7x30_surf()))
-		return -1;
-	pdev = container_of(dv, struct platform_device, dev);
-
-	wp_addr = ioremap(FPGA_SDCC_STATUS, 4);
-	if (!wp_addr) {
-		pr_err("%s: Could not remap %x\n", __func__, FPGA_SDCC_STATUS);
-		return -ENOMEM;
-	}
-
-	ret = (((readl(wp_addr) >> 4) >> (pdev->id-1)) & 0x01);
-	pr_info("%s: WP Status for Slot %d = 0x%x \n", __func__,
-							pdev->id, ret);
-	iounmap(wp_addr);
-
-	return ret;
-}
-#endif
-#endif
-
 #if defined(CONFIG_MMC_MSM_SDC1_SUPPORT)
-#if defined(CONFIG_CSDIO_VENDOR_ID) && \
-	defined(CONFIG_CSDIO_DEVICE_ID) && \
-	(CONFIG_CSDIO_VENDOR_ID == 0x70 && CONFIG_CSDIO_DEVICE_ID == 0x1117)
-static struct mmc_platform_data msm7x30_sdc1_data = {
-	.ocr_mask	= MMC_VDD_165_195 | MMC_VDD_27_28 | MMC_VDD_28_29,
-	.translate_vdd	= msm_sdcc_setup_power_mbp,
-	.mmc_bus_width  = MMC_CAP_4_BIT_DATA,
-	.status	        = mbp_status,
-	.register_status_notify = mbp_register_status_notify,
-	.msmsdcc_fmin	= 144000,
-	.msmsdcc_fmid	= 24576000,
-	.msmsdcc_fmax	= 24576000,
-	.nonremovable	= 0,
-};
-#else
 static struct mmc_platform_data msm7x30_sdc1_data = {
 	.ocr_mask	= MMC_VDD_165_195,
 	.translate_vdd	= msm_sdcc_setup_power,
@@ -3276,7 +2822,6 @@ static struct mmc_platform_data msm7x30_sdc1_data = {
 	.msmsdcc_fmax	= 49152000,
 	.nonremovable	= 0,
 };
-#endif
 #endif
 
 #ifdef CONFIG_MMC_MSM_SDC2_SUPPORT
@@ -3510,6 +3055,105 @@ static void vision_te_gpio_config(void)
 }
 #endif
 
+static struct platform_device *devices[] __initdata = {
+        &ram_console_device,
+#if defined(CONFIG_SERIAL_MSM) || defined(CONFIG_MSM_SERIAL_DEBUGGER)
+        &msm_device_uart2,
+#endif
+#ifdef CONFIG_SERIAL_MSM_HS_PURE_ANDROID
+        &vision_bcm_bt_lpm_device,
+#endif
+#ifdef CONFIG_MSM_PROC_COMM_REGULATOR
+        &msm_proccomm_regulator_dev,
+#endif
+        &asoc_msm_pcm,
+        &asoc_msm_dai0,
+        &asoc_msm_dai1,
+#if defined(CONFIG_SND_MSM_MVS_DAI_SOC)
+        &asoc_msm_mvs,
+        &asoc_mvs_dai0,
+        &asoc_mvs_dai1,
+#endif
+        &msm_device_smd,
+        &msm_device_dmov,
+        &qsd_device_spi,
+#ifdef CONFIG_MSM_SSBI
+        &msm_device_ssbi_pmic1,
+#endif
+#ifdef CONFIG_I2C_SSBI
+        &msm_device_ssbi6,
+        &msm_device_ssbi7,
+#endif
+        &android_pmem_device,
+        &msm_migrate_pages_device,
+#ifdef CONFIG_MSM_ROTATOR
+        &msm_rotator_device,
+#endif
+        &android_pmem_adsp_device,
+        &android_pmem_audio_device,
+        &msm_device_i2c,
+        &msm_device_i2c_2,
+#ifdef CONFIG_INPUT_CAPELLA_CM3602
+        &capella_cm3602,
+#endif
+#if defined(CONFIG_MSM7KV2_1X_AUDIO) || defined(CONFIG_MSM7KV2_AUDIO)
+        &msm_aictl_device,
+        &msm_mi2s_device,
+        &msm_lpa_device,
+        &msm_aux_pcm_device,
+#endif
+#ifdef CONFIG_S5K4E1GX
+        &msm_camera_sensor_s5k4e1gx,
+#endif
+
+        &msm_device_adspdec,
+        &qup_device_i2c,
+#if defined(CONFIG_MARIMBA_CORE) && \
+   (defined(CONFIG_MSM_BT_POWER) || defined(CONFIG_MSM_BT_POWER_MODULE))
+        /*&msm_bt_power_device,*/
+#endif
+        &msm_kgsl_3d0,
+        &msm_kgsl_2d0,
+        &msm_device_vidc_720p,
+#ifdef CONFIG_MSM_GEMINI
+        &msm_gemini_device,
+#endif
+#ifdef CONFIG_MSM_VPE
+        &msm_vpe_device,
+#endif
+#if defined(CONFIG_TSIF) || defined(CONFIG_TSIF_MODULE)
+        &msm_device_tsif,
+#endif
+#ifdef CONFIG_MSM_SDIO_AL
+        /* &msm_device_sdio_al, */
+#endif
+
+#if defined(CONFIG_CRYPTO_DEV_QCRYPTO) || \
+                defined(CONFIG_CRYPTO_DEV_QCRYPTO_MODULE)
+        &qcrypto_device,
+#endif
+
+#if defined(CONFIG_CRYPTO_DEV_QCEDEV) || \
+                defined(CONFIG_CRYPTO_DEV_QCEDEV_MODULE)
+        &qcedev_device,
+#endif
+
+        &htc_battery_pdev,
+        &msm_ebi0_thermal,
+        &msm_ebi1_thermal,
+#ifdef CONFIG_SERIAL_MSM_HS
+        &msm_device_uart_dm1,
+#endif
+#ifdef CONFIG_BT
+        &vision_rfkill,
+#endif
+#ifdef CONFIG_ARCH_MSM_FLASHLIGHT
+        &vision_flashlight_device,
+#endif
+        &pm8058_leds,
+	//	&cable_detect_device,
+};
+
 static void __init vision_init(void)
 {
 	int rc = 0;
@@ -3568,7 +3212,6 @@ static void __init vision_init(void)
 	buses_init();
 	platform_add_devices(devices, ARRAY_SIZE(devices));
 
-	/*usb driver won't be loaded in MFG 58 station and gift mode*/
 	vision_add_usb_devices();
 
 #ifdef CONFIG_USB_EHCI_MSM_72K
@@ -3637,6 +3280,7 @@ static void __init vision_init(void)
 	boot_reason = *(unsigned int *)
 		(smem_get_entry(SMEM_POWER_ON_STATUS_INFO, &smem_size));
 	printk(KERN_NOTICE "Boot Reason = 0x%02x\n", boot_reason);
+
 #ifdef CONFIG_MSM_CAMERA
 	config_gpio_table(camera_on_gpio_table, ARRAY_SIZE(camera_on_gpio_table));
 #endif

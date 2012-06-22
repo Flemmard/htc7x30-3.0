@@ -25,11 +25,14 @@ extern struct platform_device msm_device_mddi0;
 /* Macros assume PMIC GPIOs start at 0 */
 #define PM8058_GPIO_PM_TO_SYS(pm_gpio)     (pm_gpio + NR_GPIO_IRQS)
 #define PM8058_GPIO_SYS_TO_PM(sys_gpio)    (sys_gpio - NR_GPIO_IRQS)
+#define PM8058_MPP_BASE			   PM8058_GPIO_PM_TO_SYS(PM8058_GPIOS)
+#define PM8058_MPP_PM_TO_SYS(pm_gpio)	   (pm_gpio + PM8058_MPP_BASE)
+#define PM8058_uP_PM_TO_SYS(pm_gpio)	   (pm_gpio + FIRST_BOARD_IRQ + NR_BOARD_IRQS)
 
 #define MSM_LINUX_BASE1		0x04000000
 #define MSM_LINUX_SIZE1		0x0C000000
 #define MSM_LINUX_BASE2		0x20000000
-#define MSM_LINUX_SIZE2		0x10000000
+#define MSM_LINUX_SIZE2		0x12000000
 #define MSM_MEM_256MB_OFFSET	0x10000000
 
 #define MSM_GPU_MEM_BASE	0x00100000
