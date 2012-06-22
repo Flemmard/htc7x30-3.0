@@ -195,8 +195,14 @@ void __init spade_microp_init(void);
 #endif
 int spade_init_mmc(unsigned int sys_rev);
 void __init spade_audio_init(void);
-int __init spade_init_keypad(void);
+int spade_init_keypad(void);
 int __init spade_wifi_init(void);
 int __init spade_init_panel(void);
+#ifdef CONFIG_USB_ACCESSORY_DETECT_BY_ADC
+int htc_get_usb_accessory_adc_level(uint32_t *buffer);
+#endif
+#ifdef CONFIG_MICROP_COMMON
+void __init spade_microp_init(void);
+#endif
 
 #endif /* __ARCH_ARM_MACH_MSM_BOARD_SPADE_H */

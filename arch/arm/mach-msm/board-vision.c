@@ -142,11 +142,6 @@ struct pm8xxx_gpio_init_info {
 	struct pm_gpio			config;
 };
 
-#ifdef CONFIG_MICROP_COMMON
-void __init vision_microp_init(void);
-#endif
-int __init vision_init_panel(void);
-
 static unsigned int engineerid;
 extern unsigned long msm_fb_base;
 

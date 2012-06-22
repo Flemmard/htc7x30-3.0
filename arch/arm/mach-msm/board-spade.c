@@ -149,14 +149,6 @@ struct pm8xxx_gpio_init_info {
 	struct pm_gpio			config;
 };
 
-#ifdef CONFIG_USB_ACCESSORY_DETECT_BY_ADC
-int htc_get_usb_accessory_adc_level(uint32_t *buffer);
-#endif
-#ifdef CONFIG_MICROP_COMMON
-void __init spade_microp_init(void);
-#endif
-int __init spade_init_panel(void);
-
 static unsigned int engineerid;
 extern unsigned long msm_fb_base;
 
@@ -922,7 +914,7 @@ static int pm8058_gpios_init(void)
 		return rc;
 	} else
 	  printk(KERN_ERR "%s SLIDING_INTz config ok\n", __func__);
-
+#if 0
 	rc = pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(SPADE_VOL_UP), &vol_up);
 	if (rc) {
 		printk(KERN_ERR "%s VOL_UP config failed\n", __func__);
@@ -935,6 +927,7 @@ static int pm8058_gpios_init(void)
 		return rc;
 	} else
 	  printk(KERN_ERR "%s VOL_DN config ok\n", __func__);
+#endif
 	rc = pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(SPADE_AUD_HP_DETz), &headset);
 	if (rc) {
 		printk(KERN_ERR "%s AUD_HP_DETz config failed\n", __func__);
