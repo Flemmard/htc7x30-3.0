@@ -25,6 +25,7 @@ struct msm_serial_hs_platform_data {
 	unsigned char inject_rx_on_wakeup;
 	char rx_to_inject;
 	int (*gpio_config)(int);
+	void (*exit_lpm_cb)(struct uart_port *);
 
 	unsigned char cpu_lock_supported;
 
@@ -40,6 +41,9 @@ extern void ti_msm_hs_request_clock_off(struct uart_port *uport);
 extern void ti_msm_hs_request_clock_on(struct uart_port *uport);
 extern void ti_dc_msm_hs_request_clock_off(struct uart_port *uport);
 extern void ti_dc_msm_hs_request_clock_on(struct uart_port *uport);
+/* uport->lock must be held when calling _locked() */
+extern void msm_hs_request_clock_off_locked(struct uart_port *uport);
+extern void msm_hs_request_clock_on_locked(struct uart_port *uport);
 #endif
 
 extern void imc_msm_hs_request_clock_on(struct uart_port *uport);

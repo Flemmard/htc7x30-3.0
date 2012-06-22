@@ -102,6 +102,9 @@
 #include "acpuclock.h"
 #include <mach/dal_axi.h>
 #include <mach/msm_serial_hs.h>
+#ifdef CONFIG_SERIAL_BCM_BT_LPM
+#include <mach/bcm_bt_lpm.h>
+#endif
 #include <mach/qdsp5v2_2x/mi2s.h>
 #include <mach/qdsp5v2_2x/audio_dev_ctl.h>
 #include <mach/sdio_al.h>
@@ -2471,14 +2474,35 @@ __setup("androidboot.dq=", check_dq_setup);
 
 #ifdef CONFIG_SERIAL_MSM_HS
 static struct msm_serial_hs_platform_data msm_uart_dm1_pdata = {
+	.rx_wakeup_irq = -1,
 	.inject_rx_on_wakeup = 0,
 	.cpu_lock_supported = 1,
+#ifdef CONFIG_SERIAL_BCM_BT_LPM
+	.exit_lpm_cb = bcm_bt_lpm_exit_lpm_locked,
+#endif
 
 	/* for bcm BT */
 	.bt_wakeup_pin_supported = 1,
 	.bt_wakeup_pin = VISION_GPIO_BT_CHIP_WAKE,
 	.host_wakeup_pin = VISION_GPIO_BT_HOST_WAKE,
 };
+
+#ifdef CONFIG_SERIAL_BCM_BT_LPM
+static struct bcm_bt_lpm_platform_data bcm_bt_lpm_pdata = {
+	.gpio_wake = VISION_GPIO_BT_CHIP_WAKE,
+	.gpio_host_wake = VISION_GPIO_BT_HOST_WAKE,
+	.request_clock_off_locked = msm_hs_request_clock_off_locked,
+	.request_clock_on_locked = msm_hs_request_clock_on_locked,
+};
+
+struct platform_device vision_bcm_bt_lpm_device = {
+	.name = "bcm_bt_lpm",
+	.id = 0,
+	.dev = {
+		.platform_data = &bcm_bt_lpm_pdata,
+	},
+};
+#endif
 #endif
 
 #ifdef CONFIG_MSM_CAMERA
@@ -2915,6 +2939,9 @@ static struct platform_device *devices[] __initdata = {
 #if defined(CONFIG_SERIAL_MSM) || defined(CONFIG_MSM_SERIAL_DEBUGGER)
         &msm_device_uart2,
 #endif
+#ifdef CONFIG_SERIAL_BCM_BT_LPM
+        &vision_bcm_bt_lpm_device,
+#endif
 #ifdef CONFIG_MSM_PROC_COMM_REGULATOR
         &msm_proccomm_regulator_dev,
 #endif
@@ -3145,10 +3172,6 @@ static struct msm_i2c_ssbi_platform_data msm_i2c_ssbi7_pdata = {
 };
 #endif
 
-static void __init vision_init_irq(void)
-{
-	msm_init_irq();
-}
 #if 0
 static struct msm_gpio msm_nand_ebi2_cfg_data[] = {
 	{GPIO_CFG(86, 1, GPIO_CFG_OUTPUT, GPIO_CFG_PULL_UP, GPIO_CFG_8MA), "ebi2_cs1"},
@@ -4376,9 +4399,10 @@ static void __init vision_init(void)
 #endif
 
 #ifdef CONFIG_SERIAL_MSM_HS
-	msm_uart_dm1_pdata.rx_wakeup_irq = gpio_to_irq(VISION_GPIO_BT_HOST_WAKE);
-	msm_device_uart_dm1.name = "msm_serial_hs_brcm";
 	msm_device_uart_dm1.dev.platform_data = &msm_uart_dm1_pdata;
+	#ifndef CONFIG_SERIAL_BCM_BT_LPM
+	msm_device_uart_dm1.name = "msm_serial_hs_brcm";
+	#endif
 #endif
 
 #ifdef CONFIG_USB_MSM_OTG_72K
