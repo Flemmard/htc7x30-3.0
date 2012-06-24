@@ -613,7 +613,7 @@ static struct attribute_group spade_properties_attr_group = {
 
 /* HTC_HEADSET_GPIO Driver */
 static struct htc_headset_gpio_platform_data htc_headset_gpio_data = {
-	.hpin_gpio		= 0,
+        .hpin_gpio		= PM8058_GPIO_PM_TO_SYS(VISION_AUD_HP_DETz),
 	.key_enable_gpio	= 0,
 	.mic_select_gpio	= SPADE_AUD_MICPATH_SEL,
 };
@@ -628,7 +628,7 @@ static struct platform_device htc_headset_gpio = {
 
 /* HTC_HEADSET_PMIC Driver */
 static struct htc_headset_pmic_platform_data htc_headset_pmic_data = {
-	.hpin_gpio	= PM8058_GPIO_PM_TO_SYS(SPADE_AUD_HP_DETz),
+        .hpin_gpio	= 0,
 	.hpin_irq	= MSM_GPIO_TO_INT(
 			  PM8058_GPIO_PM_TO_SYS(SPADE_AUD_HP_DETz)),
 };
@@ -661,9 +661,9 @@ static struct platform_device htc_headset_microp = {
 
 /* HTC_HEADSET_MGR Driver */
 static struct platform_device *headset_devices[] = {
-	&htc_headset_pmic,
         &htc_headset_microp,
 	&htc_headset_gpio,
+	&htc_headset_pmic,
 	/* Please put the headset detection driver on the last */
 };
 
