@@ -284,7 +284,7 @@ static struct platform_device msm_lpa_device = {
 
 static int spade_get_PMIC_GPIO_INT(void)
 {
-	return (system_rev >= XC? PMIC_GPIO_INT_XC: PMIC_GPIO_INT);
+  return (system_rev >= XC ? PMIC_GPIO_INT_XC : PMIC_GPIO_INT);
 }
 
 static int spade_ts_atmel_power(int on)
@@ -613,7 +613,7 @@ static struct attribute_group spade_properties_attr_group = {
 
 /* HTC_HEADSET_GPIO Driver */
 static struct htc_headset_gpio_platform_data htc_headset_gpio_data = {
-        .hpin_gpio		= PM8058_GPIO_PM_TO_SYS(VISION_AUD_HP_DETz),
+        .hpin_gpio		= PM8058_GPIO_PM_TO_SYS(SPADE_AUD_HP_DETz),
 	.key_enable_gpio	= 0,
 	.mic_select_gpio	= SPADE_AUD_MICPATH_SEL,
 };
@@ -1089,8 +1089,6 @@ static int __init buses_init(void)
                                 GPIO_CFG_NO_PULL, GPIO_CFG_2MA), GPIO_CFG_ENABLE))
     pr_err("%s: gpio_tlmm_config (gpio=%d) failed\n",
            __func__, spade_get_PMIC_GPIO_INT());
-  
-  msm7x30_ssbi_pm8058_pdata.slave.irq = MSM_GPIO_TO_INT(spade_get_PMIC_GPIO_INT());
   
   return 0;
 }
@@ -2010,8 +2008,8 @@ static struct msm_serial_hs_platform_data msm_uart_dm1_pdata = {
 
 #ifdef CONFIG_SERIAL_MSM_HS_PURE_ANDROID
 static struct bcm_bt_lpm_platform_data bcm_bt_lpm_pdata = {
-  .gpio_wake = VISION_GPIO_BT_CHIP_WAKE,
-  .gpio_host_wake = VISION_GPIO_BT_HOST_WAKE,
+  .gpio_wake = SPADE_GPIO_BT_CHIP_WAKE,
+  .gpio_host_wake = SPADE_GPIO_BT_HOST_WAKE,
   .request_clock_off_locked = msm_hs_request_clock_off_locked,
   .request_clock_on_locked = msm_hs_request_clock_on_locked,
 };
@@ -3237,14 +3235,13 @@ static void __init spade_init(void)
 #endif
 
 #ifdef CONFIG_MSM_SSBI
+        msm7x30_ssbi_pm8058_pdata.slave.irq = MSM_GPIO_TO_INT(spade_get_PMIC_GPIO_INT());
+        pm8058_7x30_data.irq_pdata->devirq = MSM_GPIO_TO_INT(spade_get_PMIC_GPIO_INT());
+        msm7x30_ssbi_pm8058_pdata.slave.platform_data = &pm8058_7x30_data;
 	msm_device_ssbi_pmic1.dev.platform_data =
 				&msm7x30_ssbi_pm8058_pdata;
 #endif
-#ifdef CONFIG_MSM_SSBI
 	buses_init();
-#else
-        pm8xxx_irq_pdata->devirq = MSM_GPIO_TO_INT(spade_get_PMIC_GPIO_INT());
-#endif
 	platform_add_devices(devices, ARRAY_SIZE(devices));
 
 	spade_add_usb_devices();
