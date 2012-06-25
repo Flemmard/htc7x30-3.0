@@ -432,8 +432,8 @@ obj-$(CONFIG_MACH_FLYER) += htc_bdaddress.o
 obj-$(CONFIG_MACH_VIVO) += board-vivo.o
 obj-$(CONFIG_MACH_VIVO) += board-vivo-keypad.o
 obj-$(CONFIG_MACH_VIVO)+= board-vivo-mmc.o board-vivo-wifi.o
-obj-$(CONFIG_MACH_VIVO) += display/vivo-panel.o board-vivo-audio.o
-obj-$(CONFIG_MACH_VIVO) += htc_sleep_clk.o htc_fast_clk_7k.o
+obj-$(CONFIG_MACH_VIVO) += display/vivow-panel.o board-vivo-audio.o
+#obj-$(CONFIG_MACH_VIVO) += htc_sleep_clk.o htc_fast_clk_7k.o
 obj-$(CONFIG_MACH_VIVO) += htc_bdaddress.o
 obj-$(CONFIG_MACH_VIVOW) += board-vivow.o
 obj-$(CONFIG_MACH_VIVOW) += board-vivow-keypad.o
@@ -540,7 +540,11 @@ ifeq ($(CONFIG_ARCH_MSM7X30),y)
 		ifeq ($(CONFIG_MACH_SPADE),y)
 				obj-$(CONFIG_MSM_RMT_STORAGE_CLIENT) += rmt_storage_server.o
 		else
-			obj-$(CONFIG_MSM_RMT_STORAGE_CLIENT) += rmt_storage_client-7x30.o
+			ifeq ($(CONFIG_MACH_VIVO),y)
+				obj-$(CONFIG_MSM_RMT_STORAGE_CLIENT) += rmt_storage_server.o
+			else
+				obj-$(CONFIG_MSM_RMT_STORAGE_CLIENT) += rmt_storage_client-7x30.o
+			endif
 		endif
 	endif
 else
