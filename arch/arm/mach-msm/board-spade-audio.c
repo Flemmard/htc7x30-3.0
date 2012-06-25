@@ -454,6 +454,7 @@ void __init spade_audio_init(void)
 	};
 
 	mutex_init(&bt_sco_lock);
+	mutex_init(&mic_lock);
 #if defined(CONFIG_MSM7KV2_1X_AUDIO) || defined(CONFIG_MSM7KV2_AUDIO)
 	htc_7x30_register_analog_ops(&ops);
 	htc_7x30_register_icodec_ops(&iops);
