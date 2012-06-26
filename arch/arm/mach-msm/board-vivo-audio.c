@@ -411,8 +411,8 @@ void __init vivo_audio_init(void)
 #endif
 	aic3254_register_ctl_ops(&cops);
 
-	pm8xxx_gpio_config(VIVO_AUD_SPK_SD, &tpa2051_pwr);
-	pm8xxx_gpio_config(VIVO_AUD_AMP_EN, &tpa2051_pwr);
+	pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(VIVO_AUD_SPK_SD), &tpa2051_pwr);
+	pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(VIVO_AUD_AMP_EN), &tpa2051_pwr);
 
 	gpio_request(VIVO_AUD_MICPATH_SEL, "aud_mic_sel");
 	gpio_direction_output(VIVO_AUD_MICPATH_SEL, 1);

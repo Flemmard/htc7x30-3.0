@@ -15,6 +15,9 @@
 #define __ARCH_ARM_MACH_MSM_BOARD_VIVO_H
 
 #include <mach/board.h>
+#ifdef CONFIG_USB_ACCESSORY_DETECT_BY_ADC
+int htc_get_usb_accessory_adc_level(uint32_t *buffer);
+#endif
 
 #define VIVO_GPIO_UART2_RX 	51
 #define VIVO_GPIO_UART2_TX 	52
@@ -142,6 +145,7 @@
 #define VIVO_GPIO_EMMC_RST			  (88)
 
 /* PMIC GPIO */
+#define PMIC_GPIO_INT		27
 #define PMGPIO(x) (x-1)
 #define VIVO_GPIO_TP_INT_N		PMGPIO(1)
 #define VIVO_GPIO_GSENSOR_INT	PMGPIO(7)

@@ -1124,7 +1124,7 @@ int __init vivow_init_panel(unsigned int sys_rev)
 
 	mddi_pdata.type = MSM_MDP_MDDI_TYPE_II;
 
-	axi_clk = clk_get(NULL, "ebi1_clk");
+	axi_clk = clk_get(NULL, "ebi1_fixed_clk");
 	if (IS_ERR(axi_clk)) {
 		pr_err("%s: failed to get axi clock\n", __func__);
 		return PTR_ERR(axi_clk);
