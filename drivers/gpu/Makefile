@@ -5,7 +5,7 @@ ifeq ($(CONFIG_MSM_KGSL_ADRENO200),y)
 endif
 
 ifeq ($(CONFIG_MSM_KGSL_ADRENO205),y)
-    obj-y += msm_adreno205/
+    obj-y += msm/
 endif
 
 ifeq ($(CONFIG_MSM_KGSL_ADRENO220),y)
