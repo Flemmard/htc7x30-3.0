@@ -461,7 +461,10 @@ obj-$(CONFIG_MACH_SPADE) += board-spade-keypad.o board-spade-audio.o
 obj-$(CONFIG_MACH_SPADE) += board-spade-mmc.o board-spade-wifi.o
 obj-$(CONFIG_MACH_SPADE) += display/spade-panel.o
 obj-$(CONFIG_MACH_SPADE) += htc_bdaddress.o
-obj-$(CONFIG_ARCH_MSM7X30) += display/panel-samsungwvga-tl2796a.o display/panel-samsungwvga-s6e63m0.o display/panel-sonywvga-s6d16a0x21-7x30.o
+obj-$(CONFIG_ARCH_MSM7X30) += display/panel-samsungwvga-tl2796a.o display/panel-samsungwvga-s6e63m0.o 
+ifeq ($(CONFIG_MICROP_COMMON),y)
+	obj-$(CONFIG_ARCH_MSM7X30) += display/panel-sonywvga-s6d16a0x21-7x30.o
+endif
 obj-$(CONFIG_MACH_VISION) += board-vision.o
 obj-$(CONFIG_MACH_VISION) += board-vision-microp.o
 obj-$(CONFIG_MACH_VISION) += board-vision-mmc.o
@@ -475,7 +478,7 @@ obj-$(CONFIG_MACH_SAGA) += board-saga.o
 obj-$(CONFIG_MACH_SAGA) += board-saga-keypad.o
 obj-$(CONFIG_MACH_SAGA) += board-saga-mmc.o board-saga-wifi.o
 obj-$(CONFIG_MACH_SAGA) += display/saga-panel.o board-saga-audio.o
-obj-$(CONFIG_MACH_SAGA) += htc_sleep_clk.o htc_fast_clk_7k.o
+#obj-$(CONFIG_MACH_SAGA) += htc_sleep_clk.o htc_fast_clk_7k.o
 obj-$(CONFIG_MACH_SAGA) += htc_bdaddress.o
 obj-$(CONFIG_MACH_MECHA) += board-mecha.o
 obj-$(CONFIG_MACH_MECHA) += board-mecha-keypad.o
