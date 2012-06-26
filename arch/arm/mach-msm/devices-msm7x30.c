@@ -1227,7 +1227,7 @@ void __init msm_fb_register_device(char *name, void *data)
 		printk(KERN_ERR "%s: unknown device! %s\n", __func__, name);
 }
 
-#if defined(CONFIG_MSM_RMT_STORAGE_CLIENT) && (defined(CONFIG_MACH_VISION) || defined(CONFIG_MACH_SPADE) || defined(CONFIG_MACH_VIVO))
+#if defined(CONFIG_MSM_RMT_STORAGE_CLIENT) && (defined(CONFIG_MACH_SAGA) || defined(CONFIG_MACH_VISION) || defined(CONFIG_MACH_SPADE) || defined(CONFIG_MACH_VIVO))
 #define RAMFS_INFO_MAGICNUMBER		0x654D4D43
 #define RAMFS_INFO_VERSION		0x00000001
 #define RAMFS_MODEMSTORAGE_ID		0x4D454653
