@@ -30,22 +30,22 @@ static const char bt_name[] = "bcm4329";
 static uint32_t spade_bt_init_table[] = {
 
 	GPIO_CFG(SPADE_GPIO_BT_UART1_RTS, /* BT_RTS */
-				0,
+				1,
 				GPIO_CFG_OUTPUT,
 				GPIO_CFG_NO_PULL,
 				GPIO_CFG_8MA),
 	GPIO_CFG(SPADE_GPIO_BT_UART1_CTS, /* BT_CTS */
-				0,
+				1,
 				GPIO_CFG_INPUT,
 				GPIO_CFG_PULL_UP,
 				GPIO_CFG_8MA),
 	GPIO_CFG(SPADE_GPIO_BT_UART1_RX, /* BT_RX */
-				0,
+				1,
 				GPIO_CFG_INPUT,
 				GPIO_CFG_PULL_UP,
 				GPIO_CFG_8MA),
 	GPIO_CFG(SPADE_GPIO_BT_UART1_TX, /* BT_TX */
-				0,
+				1,
 				GPIO_CFG_OUTPUT,
 				GPIO_CFG_NO_PULL,
 				GPIO_CFG_8MA),
@@ -64,7 +64,7 @@ static uint32_t spade_bt_init_table[] = {
 	GPIO_CFG(SPADE_GPIO_BT_HOST_WAKE, /* BT_HOST_WAKE */
 				0,
 				GPIO_CFG_INPUT,
-				GPIO_CFG_PULL_UP,
+				GPIO_CFG_PULL_DOWN,
 				GPIO_CFG_4MA),
 	GPIO_CFG(SPADE_GPIO_BT_CHIP_WAKE, /* BT_CHIP_WAKE */
 				0,
@@ -105,7 +105,7 @@ static uint32_t spade_bt_on_table[] = {
 	GPIO_CFG(SPADE_GPIO_BT_HOST_WAKE,
 				0,
 				GPIO_CFG_INPUT,
-				GPIO_CFG_PULL_UP,
+				GPIO_CFG_PULL_DOWN,
 				GPIO_CFG_4MA),
 	/* BT_CHIP_WAKE */
 	GPIO_CFG(SPADE_GPIO_BT_CHIP_WAKE,
@@ -133,25 +133,25 @@ static uint32_t spade_bt_off_table[] = {
 
 	/* BT_RTS */
 	GPIO_CFG(SPADE_GPIO_BT_UART1_RTS,
-				0,
+				1,
 				GPIO_CFG_OUTPUT,
 				GPIO_CFG_NO_PULL,
 				GPIO_CFG_8MA),
 	/* BT_CTS */
 	GPIO_CFG(SPADE_GPIO_BT_UART1_CTS,
-				0,
+				1,
 				GPIO_CFG_INPUT,
 				GPIO_CFG_PULL_UP,
 				GPIO_CFG_8MA),
 	/* BT_RX */
 	GPIO_CFG(SPADE_GPIO_BT_UART1_RX,
-				0,
+				1,
 				GPIO_CFG_INPUT,
 				GPIO_CFG_PULL_UP,
 				GPIO_CFG_8MA),
 	/* BT_TX */
 	GPIO_CFG(SPADE_GPIO_BT_UART1_TX,
-				0,
+				1,
 				GPIO_CFG_OUTPUT,
 				GPIO_CFG_NO_PULL,
 				GPIO_CFG_8MA),
@@ -173,7 +173,7 @@ static uint32_t spade_bt_off_table[] = {
 	GPIO_CFG(SPADE_GPIO_BT_HOST_WAKE,
 				0,
 				GPIO_CFG_INPUT,
-				GPIO_CFG_PULL_UP,
+				GPIO_CFG_PULL_DOWN,
 				GPIO_CFG_4MA),
 	/* BT_CHIP_WAKE */
 	GPIO_CFG(SPADE_GPIO_BT_CHIP_WAKE,
