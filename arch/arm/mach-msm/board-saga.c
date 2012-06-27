@@ -3057,7 +3057,7 @@ static void __init saga_init(void)
 #endif
 	pm8058_gpios_init();
 
-#if defined(CONFIG_MSM_RMT_STORAGE_CLIENT)
+#ifdef CONFIG_MSM_RMT_STORAGE_SERVER
 	rmt_storage_add_ramfs();
 #endif
 

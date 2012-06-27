@@ -153,6 +153,34 @@ struct pm8xxx_gpio_init_info {
 static unsigned int engineerid;
 extern unsigned long msm_fb_base;
 
+static int pm8xxx_gpio_cfg(int gpio, int dir, int outb, int outv, int pull, int vsel, int out_strength, int function, int inv_int_pol)
+{
+  static struct pm_gpio tmp;
+  tmp.direction          = dir;
+  tmp.output_buffer      = outb;
+  tmp.output_value       = outv;
+  tmp.pull               = pull;
+  tmp.vin_sel            = vsel;
+  tmp.out_strength       = out_strength;
+  tmp.function           = function;
+  tmp.inv_int_pol        = inv_int_pol;
+  return pm8xxx_gpio_config(gpio, &tmp);
+}
+
+#include <linux/workqueue.h>
+static void my_work_handler(struct work_struct *w);
+
+static struct workqueue_struct *wq = 0;
+static DECLARE_DELAYED_WORK(my_work, my_work_handler);
+static unsigned long delay;
+
+static void
+my_work_handler(struct work_struct *w)
+{
+  uint32_t restart_reason = 0x6f656d99;
+  msm_proc_comm(PCOM_RESET_CHIP_IMM, &restart_reason, 0);
+}
+
 unsigned int vivo_get_engineerid(void)
 {
 	return engineerid;
@@ -813,89 +841,51 @@ static struct i2c_board_info i2c_sensors_devices[] = {
 
 static int pm8058_gpios_init(void)
 {
-	int rc;
-	static struct pm_gpio tp_rstz = {
-		.direction      = PM_GPIO_DIR_OUT,
-		.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
-		.output_value   = 1,
-		.pull           = PM_GPIO_PULL_UP_31P5,
-		.vin_sel        = PM8058_GPIO_VIN_L5,
-		.out_strength   = PM_GPIO_STRENGTH_HIGH,
-		.function       = PM_GPIO_FUNC_NORMAL,
-		.inv_int_pol    = 0,
-	};
+	/* touch panel */
+	pm8xxx_gpio_cfg(VIVO_GPIO_TP_INT_N, PM_GPIO_DIR_IN, 0, 0, PM_GPIO_PULL_UP_31P5,
+		PM8058_GPIO_VIN_L5, 0, PM_GPIO_FUNC_NORMAL, 0);
+	pm8xxx_gpio_cfg(VIVO_TP_RSTz, PM_GPIO_DIR_OUT, PM_GPIO_OUT_BUF_CMOS, 1, PM_GPIO_PULL_NO,
+		PM8058_GPIO_VIN_L5, PM_GPIO_STRENGTH_HIGH, PM_GPIO_FUNC_NORMAL, 0);
 
-	static struct pm_gpio vol_up = {
-		.direction      = PM_GPIO_DIR_IN,
-		.output_buffer  = 0,
-		.output_value   = 0,
-		.pull           = PM_GPIO_PULL_UP_31P5,
-		.vin_sel        = PM8058_GPIO_VIN_S3,
-		.out_strength   = 0,
-		.function       = PM_GPIO_FUNC_NORMAL,
-		.inv_int_pol    = 0,
-	};
+	/* led */
+	pm8xxx_gpio_cfg(VIVO_GREEN_LED, PM_GPIO_DIR_OUT, PM_GPIO_OUT_BUF_CMOS, 1, PM_GPIO_PULL_NO,
+		PM8058_GPIO_VIN_L5, PM_GPIO_STRENGTH_HIGH, PM_GPIO_FUNC_2, 0);
+	pm8xxx_gpio_cfg(VIVO_AMBER_LED, PM_GPIO_DIR_OUT, PM_GPIO_OUT_BUF_CMOS, 1, PM_GPIO_PULL_NO,
+		PM8058_GPIO_VIN_L5, PM_GPIO_STRENGTH_HIGH, PM_GPIO_FUNC_2, 0);
+	//pm8xxx_gpio_cfg(VIVO_KEYPAD_LED, PM_GPIO_DIR_OUT, PM_GPIO_OUT_BUF_CMOS, 0, PM_GPIO_PULL_NO,
+	//	PM8058_GPIO_VIN_S3, PM_GPIO_STRENGTH_HIGH, PM_GPIO_FUNC_2, 0);
 
-	static struct pm_gpio vol_dn = {
-		.direction      = PM_GPIO_DIR_IN,
-		.output_buffer  = 0,
-		.output_value   = 0,
-		.pull           = PM_GPIO_PULL_UP_31P5,
-		.vin_sel        = PM8058_GPIO_VIN_S3,
-		.out_strength   = 0,
-		.function       = PM_GPIO_FUNC_NORMAL,
-		.inv_int_pol    = 0,
-	};
+	/* direct key */
+	pm8xxx_gpio_cfg(VIVO_VOL_UP, PM_GPIO_DIR_IN, 0, 0, PM_GPIO_PULL_UP_31P5, PM8058_GPIO_VIN_S3, 0, PM_GPIO_FUNC_NORMAL, 0);
+	pm8xxx_gpio_cfg(VIVO_VOL_DN, PM_GPIO_DIR_IN, 0, 0, PM_GPIO_PULL_UP_31P5, PM8058_GPIO_VIN_S3, 0, PM_GPIO_FUNC_NORMAL, 0);
 
-	static struct pm_gpio sdmc_cd_n = {
-		.direction      = PM_GPIO_DIR_IN,
-		.output_buffer  = 0,
-		.output_value   = 0,
-		.pull           = PM_GPIO_PULL_UP_31P5,
-		.vin_sel        = PM8058_GPIO_VIN_L5,
-		.out_strength   = 0,
-		.function       = PM_GPIO_FUNC_NORMAL,
-		.inv_int_pol    = 0,
-	};
+	/* sd detect */
+	pm8xxx_gpio_cfg(VIVO_GPIO_SDMC_CD_N, PM_GPIO_DIR_IN, 0, 0, PM_GPIO_PULL_UP_31P5, PM8058_GPIO_VIN_L5, 0, PM_GPIO_FUNC_NORMAL, 0);
 
-	static struct pm_gpio headset = {
-		.direction      = PM_GPIO_DIR_IN,
-		.output_buffer  = 0,
-		.output_value   = 0,
-		.pull           = PM_GPIO_PULL_UP_31P5,
-		.vin_sel        = PM8058_GPIO_VIN_S3,
-		.out_strength   = 0,
-		.function       = PM_GPIO_FUNC_NORMAL,
-		.inv_int_pol    = 0,
-	};
 
-	rc = pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(VIVO_TP_RSTz), &tp_rstz);
-	if (rc) {
-		printk(KERN_ERR "%s TP_RSTz config failed\n", __func__);
-		return rc;
-	} else
-	  printk(KERN_ERR "%s TP_RSTz config ok\n", __func__);
+	/* audio */
+	//pm8xxx_gpio_cfg(VIVO_AUD_SPK_ENO, PM_GPIO_DIR_OUT, PM_GPIO_OUT_BUF_CMOS, 0, PM_GPIO_PULL_NO,
+	//	PM8058_GPIO_VIN_L5, PM_GPIO_STRENGTH_HIGH, PM_GPIO_FUNC_NORMAL, 0);
+	//pm8xxx_gpio_cfg(VIVO_AUD_HANDSET_ENO, PM_GPIO_DIR_OUT, PM_GPIO_OUT_BUF_CMOS, 0, PM_GPIO_PULL_NO,
+	//	PM8058_GPIO_VIN_L5, PM_GPIO_STRENGTH_HIGH, PM_GPIO_FUNC_NORMAL, 0);
 
-	rc = pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(VIVO_GPIO_SDMC_CD_N), &sdmc_cd_n);
-	if (rc) {
-		printk(KERN_ERR "%s SLIDING_INTz config failed\n", __func__);
-		return rc;
-	} else
-	  printk(KERN_ERR "%s SLIDING_INTz config ok\n", __func__);
-#if 0
-	rc = pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(VIVO_VOL_UP), &vol_up);
-	if (rc) {
-		printk(KERN_ERR "%s VOL_UP config failed\n", __func__);
-		return rc;
-	} else
-	  printk(KERN_ERR "%s VOL_UP config ok\n", __func__);
-	rc = pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(VIVO_VOL_DN), &vol_dn);
-	if (rc) {
-		printk(KERN_ERR "%s VOL_DN config failed\n", __func__);
-		return rc;
-	} else
-	  printk(KERN_ERR "%s VOL_DN config ok\n", __func__);
-#endif
+	/* P-sensor and light sensor */
+	pm8xxx_gpio_cfg(VIVO_GPIO_PS_EN, PM_GPIO_DIR_OUT, PM_GPIO_OUT_BUF_CMOS, 0, PM_GPIO_PULL_NO,
+		PM8058_GPIO_VIN_L5, PM_GPIO_STRENGTH_HIGH, PM_GPIO_FUNC_NORMAL, 0);
+	pm8xxx_gpio_cfg(VIVO_GPIO_LS_EN, PM_GPIO_DIR_OUT, PM_GPIO_OUT_BUF_CMOS, 0, PM_GPIO_PULL_NO,
+		PM8058_GPIO_VIN_L5, PM_GPIO_STRENGTH_HIGH, PM_GPIO_FUNC_NORMAL, 0);
+	if (system_rev == 0)
+		pm8xxx_gpio_cfg(VIVO_GPIO_PS_INT_N, PM_GPIO_DIR_IN, 0, 0, PM_GPIO_PULL_DN, PM8058_GPIO_VIN_L5, 0, PM_GPIO_FUNC_NORMAL, 0);
+	else
+		pm8xxx_gpio_cfg(VIVO_GPIO_PS_INT_N, PM_GPIO_DIR_IN, 0, 0, PM_GPIO_PULL_UP_31P5, PM8058_GPIO_VIN_L5, 0, PM_GPIO_FUNC_NORMAL, 0);
+
+	if (system_rev >= 1) {
+		/* G Sensor INT*/
+		pm8xxx_gpio_cfg(VIVO_GPIO_GSENSOR_INT, PM_GPIO_DIR_IN, 0, 0, PM_GPIO_PULL_NO, PM8058_GPIO_VIN_L5, 0, PM_GPIO_FUNC_NORMAL, 0);
+		/* E-Compass INT */
+		pm8xxx_gpio_cfg(VIVO_GPIO_COMPASS_INT_N, PM_GPIO_DIR_IN, 0, 0, PM_GPIO_PULL_NO, PM8058_GPIO_VIN_L5, 0, PM_GPIO_FUNC_NORMAL, 0);
+	}
+
 	return 0;
 }
 
@@ -3077,7 +3067,7 @@ static struct platform_device *devices[] __initdata = {
         &vivo_flashlight_device,
 #endif
         &pm8058_leds,
-        //        &cable_detect_device,
+        &cable_detect_device,
 };
 
 static void __init vivo_init(void)
@@ -3211,9 +3201,9 @@ static void __init vivo_init(void)
 	vivo_audio_init();
         vivo_wifi_init();
 	msm_init_pmic_vibrator(3000);
-  uint32_t restart_reason = 0x6f656d99;
-  msm_proc_comm(PCOM_RESET_CHIP_IMM, &restart_reason, 0);
-
+        delay = msecs_to_jiffies(5000);
+        wq = create_singlethread_workqueue("my");
+        queue_delayed_work(wq, &my_work, delay);
 }
 
 static unsigned pmem_sf_size = MSM_PMEM_SF_SIZE;

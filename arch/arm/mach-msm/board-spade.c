@@ -2068,8 +2068,6 @@ static struct platform_device msm_vpe_device = {
 #endif
 
 #ifdef CONFIG_MSM_CAMERA
-
-
 static struct i2c_board_info msm_camera_boardinfo[] __initdata = {
 #ifdef CONFIG_OV8810
 	{
@@ -2529,40 +2527,6 @@ msm_i2c_gpio_config(int adap_id, int config_type)
 	msm_gpios_enable(msm_i2c_table, 2);
 }
 /*This needs to be enabled only for OEMS*/
-#ifndef CONFIG_QUP_EXCLUSIVE_TO_CAMERA
-static struct vreg *qup_vreg;
-#endif
-static void
-qup_i2c_gpio_config(int adap_id, int config_type)
-{
-	int rc = 0;
-	struct msm_gpio *qup_i2c_table;
-	/* Each adapter gets 2 lines from the table */
-	if (adap_id != 4)
-		return;
-	if (config_type)
-		qup_i2c_table = qup_i2c_gpios_hw;
-	else
-		qup_i2c_table = qup_i2c_gpios_io;
-	rc = msm_gpios_enable(qup_i2c_table, 2);
-	if (rc < 0)
-		printk(KERN_ERR "QUP GPIO enable failed: %d\n", rc);
-	/*This needs to be enabled only for OEMS*/
-#ifndef CONFIG_QUP_EXCLUSIVE_TO_CAMERA
-	if (qup_vreg) {
-		int rc = vreg_set_level(qup_vreg, 1800);
-		if (rc) {
-			pr_err("%s: vreg LVS1 set level failed (%d)\n",
-			__func__, rc);
-		}
-		rc = vreg_enable(qup_vreg);
-		if (rc) {
-			pr_err("%s: vreg_enable() = %d \n",
-			__func__, rc);
-		}
-	}
-#endif
-}
 
 static struct msm_i2c_platform_data msm_i2c_pdata = {
 	.clk_freq = 400000,
@@ -3285,7 +3249,7 @@ static void __init spade_init(void)
 #endif
 	pm8058_gpios_init();
 
-#if defined(CONFIG_MSM_RMT_STORAGE_CLIENT)
+#ifdef CONFIG_MSM_RMT_STORAGE_SERVER
 	rmt_storage_add_ramfs();
 #endif
 

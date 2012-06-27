@@ -537,22 +537,11 @@ obj-$(CONFIG_HTC_HEADSET_MISC) += htc_headset_misc.o
 obj-$(CONFIG_HTC_HEADSET_MAX8957) += htc_headset_max8957.o
 obj-$(CONFIG_HTC_HEADSET_8X60) += htc_headset_8x60.o
 ifeq ($(CONFIG_ARCH_MSM7X30),y)
-	ifeq ($(CONFIG_MACH_VISION),y)
-		obj-$(CONFIG_MSM_RMT_STORAGE_CLIENT) += rmt_storage_server.o
-	else
-		ifeq ($(CONFIG_MACH_SPADE),y)
-				obj-$(CONFIG_MSM_RMT_STORAGE_CLIENT) += rmt_storage_server.o
-		else
-			ifeq ($(CONFIG_MACH_VIVO),y)
-				obj-$(CONFIG_MSM_RMT_STORAGE_CLIENT) += rmt_storage_server.o
-			else
-				obj-$(CONFIG_MSM_RMT_STORAGE_CLIENT) += rmt_storage_client-7x30.o
-			endif
-		endif
-	endif
+	obj-$(CONFIG_MSM_RMT_STORAGE_CLIENT) += rmt_storage_client-7x30.o
 else
-obj-$(CONFIG_MSM_RMT_STORAGE_CLIENT) += rmt_storage_client.o
+	obj-$(CONFIG_MSM_RMT_STORAGE_CLIENT) += rmt_storage_client.o
 endif
+obj-$(CONFIG_MSM_RMT_STORAGE_SERVER) += rmt_storage_server.o
 obj-$(CONFIG_MSM_SDIO_SMEM) += sdio_smem.o
 obj-$(CONFIG_MSM_RPM) += rpm.o rpm_resources.o
 obj-$(CONFIG_MSM_MPM) += mpm.o
