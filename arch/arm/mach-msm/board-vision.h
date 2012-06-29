@@ -53,9 +53,9 @@ extern struct platform_device msm_device_mddi0;
 
 #define PMEM_KERNEL_EBI1_SIZE   0x00600000
 
-#define MSM_PMEM_SF_SIZE	0x02000000
+#define MSM_PMEM_SF_SIZE	0x01800000
 
-#define MSM_FB_SIZE		0x00500000
+#define MSM_FB_SIZE		0x00300000
 
 #define VISION_GPIO_WIFI_IRQ             147
 #define VISION_GPIO_WIFI_SHUTDOWN_N       39
