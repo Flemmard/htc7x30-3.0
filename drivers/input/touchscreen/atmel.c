@@ -998,30 +998,17 @@ static void msg_process_multitouch(struct atmel_ts_data *ts, uint8_t *data, uint
 					idx + 1, ts->finger_data[idx].x, ts->finger_data[idx].y);
 			}
 			if (ts->id->version >= 0x20 && ts->pre_data[0] < RECALIB_DONE) {
-				if (ts->finger_count == 0) {
-					if (ts->pre_data[0] == RECALIB_NEED &&
-						!ts->unlock_attr && idx == 0 &&
-						ts->finger_data[idx].y > 750 &&
-						ts->finger_data[idx].y - ts->pre_data[idx+1] > 135) {
-							restore_normal_threshold(ts);
-							confirm_calibration(ts, 1, 0);
-					} else if (ts->pre_data[0] == RECALIB_UNLOCK &&
-						ts->unlock_attr && idx == 0 &&
-						time_after(jiffies, ts->valid_press_timeout)) {
-						ts->valid_pressed_cnt++;
-						if (ts->valid_pressed_cnt > 2) {
-							cancel_delayed_work_sync(&ts->unlock_work);
-							if (ts->pre_data[0] == RECALIB_UNLOCK)
-								confirm_calibration(ts, 0, 1);
-						}
-					} else if (ts->pre_data[0] == RECALIB_NG)
-						ts->pre_data[0] = RECALIB_NEED;
-				} else {
-					if (ts->pre_data[0] < RECALIB_UNLOCK)
-						i2c_atmel_write_byte_data(ts->client,
-							get_object_address(ts, GEN_COMMANDPROCESSOR_T6) +
-							T6_CFG_CALIBRATE, 0x55);
-				}
+				if (ts->finger_count == 0 && !ts->pre_data[0] &&
+					(idx == 0 && ts->finger_data[idx].y > 750
+					&& ((ts->finger_data[idx].y - ts->pre_data[idx + 1]) > 135)))
+						restore_normal_threshold(ts);
+						confirm_calibration(ts, 1, 0);
+				if (ts->finger_count)
+					i2c_atmel_write_byte_data(ts->client,
+						get_object_address(ts, GEN_COMMANDPROCESSOR_T6) +
+						T6_CFG_CALIBRATE, 0x55);
+				else if (!ts->finger_count && ts->pre_data[0] == RECALIB_NG)
+					ts->pre_data[0] = RECALIB_NEED;
 			}
 		}
 	} else if ((data[T9_MSG_STATUS] & (T9_MSG_STATUS_DETECT|T9_MSG_STATUS_PRESS)) &&
@@ -1048,18 +1035,13 @@ static void msg_process_multitouch(struct atmel_ts_data *ts, uint8_t *data, uint
 				ts->finger_count++;
 			ts->finger_pressed |= BIT(idx);
 			if (ts->id->version >= 0x20 && ts->pre_data[0] < RECALIB_DONE) {
-				if (ts->pre_data[0] < RECALIB_UNLOCK) {
-					ts->pre_data[idx + 1] = ts->finger_data[idx].y;
-					if (ts->finger_count == ts->finger_support)
-						i2c_atmel_write_byte_data(ts->client,
-							get_object_address(ts, GEN_COMMANDPROCESSOR_T6) +
-							T6_CFG_CALIBRATE, 0x55);
-					else if (ts->finger_count > 1 &&
-						ts->pre_data[0] == RECALIB_NEED)
-						ts->pre_data[0] = RECALIB_NG;
-				} else if (ts->pre_data[0] == RECALIB_UNLOCK && ts->unlock_attr)
-					if (ts->finger_count > 1)
-						ts->valid_pressed_cnt = 0;
+				ts->pre_data[idx + 1] = ts->finger_data[idx].y;
+				if (ts->finger_count == ts->finger_support)
+					i2c_atmel_write_byte_data(ts->client,
+						get_object_address(ts, GEN_COMMANDPROCESSOR_T6) +
+						T6_CFG_CALIBRATE, 0x55);
+				else if (!ts->pre_data[0] && ts->finger_count > 1)
+					ts->pre_data[0] = RECALIB_NG;
 			}
 		}
 	}
