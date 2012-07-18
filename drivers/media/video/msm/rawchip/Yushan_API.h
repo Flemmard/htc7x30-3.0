@@ -31,6 +31,50 @@ Description:API header file.
 #include "rawchip_spi.h"
 
 
+/************************************************************************
+						Debugging
+************************************************************************/
+#define YUSHAN_DEBUG 1
+#if YUSHAN_DEBUG
+	#ifdef WIN32
+		#include <stdio.h>
+		extern	FILE	* fLogFile;
+		extern	FILE	*HtmlFileLog;
+		/* ST debugging log */
+		#define __func__  __FUNCTION__
+		#define DEBUGLOG(...)  fprintf(HtmlFileLog, __VA_ARGS__)
+	#else
+		#define DEBUGLOG  pr_info
+	#endif
+#else
+	#define DEBUGLOG(...)	/*  Nothing */
+#endif
+
+#define YUSHAN_VERBOSE 0
+#if YUSHAN_VERBOSE
+	#ifdef WIN32
+		#define VERBOSELOG(...)   fprintf(HtmlFileLog, __VA_ARGS__)
+	#else
+		#define VERBOSELOG  pr_info
+	#endif
+#else
+	#define VERBOSELOG(...)	/*  Nothing */
+#endif
+
+#ifdef WIN32
+	#if YUSHAN_DEBUG == 0
+		#include <stdio.h>
+		extern	FILE	*fLogFile;
+		extern	FILE	*HtmlFileLog;
+		/* ST debugging log */
+		#define __func__  __FUNCTION__
+	#endif
+	#define ERRORLOG(...)   fprintf(HtmlFileLog, __VA_ARGS__)
+#else
+	#define ERRORLOG  pr_info
+#endif
+
+
 typedef unsigned char bool_t;
 //typedef unsigned char uint8_t;
 //typedef signed char int8_t;
@@ -584,6 +628,7 @@ typedef struct
 #define RAWCHIP_INT_TYPE_PDP_EOF_EXECCMD (0x01<<2)
 #define RAWCHIP_INT_TYPE_DPP_EOF_EXECCMD (0x01<<3)
 #define RAWCHIP_INT_TYPE_DOP_EOF_EXECCMD (0x01<<4)
+#define RAWCHIP_INT_TYPE_ERROR_FATAL (0x01<<5)
 
 struct rawchip_sensor_init_data {
 	uint8_t spi_clk;
@@ -706,6 +751,7 @@ void Yushan_dump_all_register(void);
 int Yushan_Update_AEC_AWB_Params(rawchip_update_aec_awb_params_t *update_aec_awb_params);
 int Yushan_Update_AF_Params(rawchip_update_af_params_t *update_af_params);
 int Yushan_Update_3A_Params(rawchip_newframe_ack_enable_t enable_newframe_ack);
+void	Yushan_Status_Snapshot(void);
 
 
 #ifdef __cplusplus

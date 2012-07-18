@@ -1797,7 +1797,7 @@ uint8_t Yushan_parse_interrupt(void)
 
 			case EVENT_CSI2TX_SP_ERR :
 				pr_err("[CAM] %s:[ERR]EVENT_CSI2TX_SP_ERR\n", __func__);
-				interrupt_type |= RAWCHIP_INT_TYPE_ERROR;
+				interrupt_type |= RAWCHIP_INT_TYPE_ERROR_FATAL;
 				break;
 
 			case EVENT_CSI2TX_LP_ERR :
@@ -2046,6 +2046,8 @@ uint8_t Yushan_parse_interrupt(void)
 		atomic_set(&interrupt2, 1);
 		wake_up(&yushan_int.yushan_wait);
 	}
+
+	if (interrupt_type & RAWCHIP_INT_TYPE_ERROR || interrupt_type & RAWCHIP_INT_TYPE_ERROR_FATAL)	Yushan_Status_Snapshot();
 
 	if ((interrupt_type & RAWCHIP_INT_TYPE_ERROR) && interrupt_err_count <= 10) {
 		interrupt_err_count++;
@@ -3796,7 +3798,7 @@ int Yushan_sensor_open_init(void)
 		sInitStruct.sFrameFormat[1].bActiveDatatype = 1;
 		sInitStruct.sFrameFormat[1].bSelectStillVfMode = YUSHAN_FRAME_FORMAT_VF_MODE;
 		/* For the wordcount 0 and type of Raw8/10 in active data. */
-		sInitStruct.sFrameFormat[2].bDatatype = 0x2a;
+		sInitStruct.sFrameFormat[4].bDatatype = 0x2a;
 	} else { /* if (bPixelFormat ==RAW10) */
 		CDBG("[CAM] bPixelFormat==RAW10");
 		sInitStruct.sFrameFormat[0].uwWordcount = (uwHSize*10)/8;	 /* For RAW10 this value should be uwHSize*10/8 */
@@ -3806,19 +3808,32 @@ int Yushan_sensor_open_init(void)
 		sInitStruct.sFrameFormat[1].bActiveDatatype = 1;
 		sInitStruct.sFrameFormat[1].bSelectStillVfMode = YUSHAN_FRAME_FORMAT_VF_MODE;
 		/* For the wordcount 0 and type of Raw8/10 in active data. */
-		sInitStruct.sFrameFormat[2].bDatatype = 0x2b;
+		sInitStruct.sFrameFormat[4].bDatatype = 0x2b;
 	}
 	/* Overwritting Data Type for 10 to 8 Pixel format */
 	if (bPixelFormat == RAW10_8) {
 		sInitStruct.sFrameFormat[0].bDatatype = 0x30;
 		sInitStruct.sFrameFormat[1].bDatatype = 0x30;
-		sInitStruct.sFrameFormat[2].bDatatype = 0x30;
+		sInitStruct.sFrameFormat[4].bDatatype = 0x30;
 	}
 	sInitStruct.sFrameFormat[0].bActiveDatatype = 1;
 	sInitStruct.sFrameFormat[0].bSelectStillVfMode = YUSHAN_FRAME_FORMAT_STILL_MODE;
-	sInitStruct.sFrameFormat[2].uwWordcount = 3260; /* One wordcount to be 0 (CSI2_RX will flush last line in InterFrame) */
-	sInitStruct.sFrameFormat[2].bActiveDatatype = 1; /* for fix of Bug#51 */
+
+	/* add frame formats for embedded lines for both modes*/
+	sInitStruct.sFrameFormat[2].bDatatype = 0x12;
+	sInitStruct.sFrameFormat[2].uwWordcount = sInitStruct.sFrameFormat[0].uwWordcount;
+	sInitStruct.sFrameFormat[2].bActiveDatatype = 0x12; /* Status lines datatype */
 	sInitStruct.sFrameFormat[2].bSelectStillVfMode = YUSHAN_FRAME_FORMAT_NORMAL_MODE;
+
+	sInitStruct.sFrameFormat[3].bDatatype = 0x12;
+	sInitStruct.sFrameFormat[3].uwWordcount = sInitStruct.sFrameFormat[1].uwWordcount;
+	sInitStruct.sFrameFormat[3].bActiveDatatype = 0x12; /* Status lines datatype */
+	sInitStruct.sFrameFormat[3].bSelectStillVfMode = YUSHAN_FRAME_FORMAT_NORMAL_MODE;
+
+	/* Frame format with WC=0 */
+	sInitStruct.sFrameFormat[4].uwWordcount = 0; /* One wordcount to be 0 (CSI2_RX will flush last line in InterFrame) */
+	sInitStruct.sFrameFormat[4].bActiveDatatype = 1; /* for fix of Bug#51 */
+	sInitStruct.sFrameFormat[4].bSelectStillVfMode = YUSHAN_FRAME_FORMAT_NORMAL_MODE;
 
 	sGainsExpTime.uwAnalogGainCodeGR = 0x20;/* 0x0 10x=>140;1x=>20 */
 	sGainsExpTime.uwAnalogGainCodeR = 0x20;
@@ -3845,8 +3860,8 @@ int Yushan_sensor_open_init(void)
 	sDxoDopTuning.bEstimationMode = 1;
 	sDxoDopTuning.bSharpness = 0x70;//0x70; //0x60;
 	sDxoDopTuning.bDenoisingLowGain = 0x75;//0x80;//0x60;/* 0xFF for de-noise verify, original:0x1 */
-	sDxoDopTuning.bDenoisingMedGain = 0x75;//0x80;
-	sDxoDopTuning.bDenoisingHiGain = 0x70;//0x90;
+	sDxoDopTuning.bDenoisingMedGain = 0x70;//0x80;
+	sDxoDopTuning.bDenoisingHiGain = 0x60;//0x90;
 	sDxoDopTuning.bNoiseVsDetailsLowGain = 0x90;//0x85//0xA0;/* Noise v.s. Texture by Graidient. Higher value cause sharp image */
 	sDxoDopTuning.bNoiseVsDetailsMedGain = 0x80;
 	sDxoDopTuning.bNoiseVsDetailsHiGain = 0x80;
@@ -5073,5 +5088,101 @@ void Yushan_dump_all_register(void)
 	rawchip_spi_read_2B2B(YUSHAN_LBE_POST_DXO_READ_START, &read_data);
 	pr_info("[CAM]YUSHAN_LBE_POST_DXO_READ_START=%x\n", read_data);
 
+}
+
+/******************************************************************
+API Function:	This function will read current status and configuration
+				for all Yushan Blocks and dump it in log
+				DEBUG MODE at least must de enabled
+Input:
+Return:
+*******************************************************************/
+#define YUSHAN_REGISTER_CHECK(reg_addr) udwSpiData = 0; SPI_Read(reg_addr, 4, (uint8_t *)(&udwSpiData)); DEBUGLOG("[CAM] %s: %s: 0x%08x\n", __func__, #reg_addr, udwSpiData);
+#define YUSHAN_DOP_REGISTER_CHECK(reg_addr) udwSpiData = 0; SPI_Read(reg_addr + DXO_DOP_BASE_ADDR, 1, (uint8_t *)(&udwSpiData)); DEBUGLOG("[CAM] %s: %s: 0x%02x\n", __func__, #reg_addr, udwSpiData);
+#define YUSHAN_PDP_REGISTER_CHECK(reg_addr) udwSpiData = 0; SPI_Read(reg_addr + DXO_PDP_BASE_ADDR, 1, (uint8_t *)(&udwSpiData)); DEBUGLOG("[CAM] %s: %s: 0x%02x\n", __func__, #reg_addr, udwSpiData);
+#define YUSHAN_DPP_REGISTER_CHECK(reg_addr) udwSpiData = 0; SPI_Read(reg_addr + DXO_DPP_BASE_ADDR-0x8000, 1, (uint8_t *)(&udwSpiData)); DEBUGLOG("[CAM] %s: %s: 0x%02x\n", __func__, #reg_addr, udwSpiData);
+void Yushan_Status_Snapshot(void)
+{
+	uint32_t	udwSpiData;
+	uint32_t	udwSpiBaseIndex;
+
+	VERBOSELOG("[CAM] %s: Start\n", __func__);
+
+	DEBUGLOG("[CAM] %s: **** CLK CONFIG  CHECK ****\n", __func__);
+	YUSHAN_REGISTER_CHECK(YUSHAN_CLK_DIV_FACTOR);
+	YUSHAN_REGISTER_CHECK(YUSHAN_CLK_DIV_FACTOR_2);
+	YUSHAN_REGISTER_CHECK(YUSHAN_CLK_CTRL);
+	YUSHAN_REGISTER_CHECK(YUSHAN_PLL_CTRL_MAIN);
+
+	DEBUGLOG("[CAM] %s: **** CSI2 RX INTERFACE  CHECK ****\n", __func__);
+	YUSHAN_REGISTER_CHECK(YUSHAN_CSI2_RX_FRAME_NUMBER);
+	YUSHAN_REGISTER_CHECK(YUSHAN_CSI2_RX_DATA_TYPE);
+	YUSHAN_REGISTER_CHECK(YUSHAN_CSI2_RX_WORD_COUNT);
+	YUSHAN_REGISTER_CHECK(YUSHAN_ITM_CSI2RX_STATUS);
+
+	DEBUGLOG("[CAM] %s: **** PRE-DXO CHECK ****\n", __func__);
+	YUSHAN_REGISTER_CHECK(YUSHAN_IDP_GEN_WC_DI_0);
+	YUSHAN_REGISTER_CHECK(YUSHAN_IDP_GEN_WC_DI_1);
+	YUSHAN_REGISTER_CHECK(YUSHAN_IDP_GEN_WC_DI_2);
+	YUSHAN_REGISTER_CHECK(YUSHAN_IDP_GEN_WC_DI_3);
+	YUSHAN_REGISTER_CHECK(YUSHAN_IDP_GEN_WC_DI_4);
+	YUSHAN_REGISTER_CHECK(YUSHAN_IDP_GEN_WC_DI_5);
+	YUSHAN_REGISTER_CHECK(YUSHAN_IDP_GEN_WC_DI_6);
+	YUSHAN_REGISTER_CHECK(YUSHAN_IDP_GEN_WC_DI_7);
+	YUSHAN_REGISTER_CHECK(YUSHAN_IDP_GEN_WC_DI_8);
+	YUSHAN_REGISTER_CHECK(YUSHAN_IDP_GEN_WC_DI_9);
+	YUSHAN_REGISTER_CHECK(YUSHAN_IDP_GEN_WC_DI_10);
+	YUSHAN_REGISTER_CHECK(YUSHAN_IDP_GEN_WC_DI_11);
+	YUSHAN_REGISTER_CHECK(YUSHAN_IDP_GEN_WC_DI_12);
+	YUSHAN_REGISTER_CHECK(YUSHAN_IDP_GEN_WC_DI_13);
+	YUSHAN_REGISTER_CHECK(YUSHAN_IDP_GEN_WC_DI_14);
+	YUSHAN_REGISTER_CHECK(YUSHAN_IDP_GEN_CONTROL);
+	YUSHAN_REGISTER_CHECK(YUSHAN_ITM_IDP_STATUS);
+	YUSHAN_REGISTER_CHECK(YUSHAN_T1_DMA_REG_STATUS);
+
+	DEBUGLOG("[CAM] %s: **** DXO PDP CHECK ****\n", __func__);
+	YUSHAN_PDP_REGISTER_CHECK(DxOPDP_ucode_id_7_0);
+	YUSHAN_PDP_REGISTER_CHECK(DxOPDP_ucode_id_15_8);
+	YUSHAN_PDP_REGISTER_CHECK(DxOPDP_hw_id_7_0);
+	YUSHAN_PDP_REGISTER_CHECK(DxOPDP_hw_id_15_8);
+	YUSHAN_PDP_REGISTER_CHECK(DxOPDP_calib_id_0_7_0);
+	YUSHAN_PDP_REGISTER_CHECK(DxOPDP_calib_id_1_7_0);
+	YUSHAN_PDP_REGISTER_CHECK(DxOPDP_calib_id_2_7_0);
+	YUSHAN_PDP_REGISTER_CHECK(DxOPDP_calib_id_3_7_0);
+	YUSHAN_PDP_REGISTER_CHECK(DxOPDP_error_code_7_0);
+	YUSHAN_PDP_REGISTER_CHECK(DxOPDP_frame_number_7_0);
+	YUSHAN_PDP_REGISTER_CHECK(DxOPDP_frame_number_15_8);
+
+	DEBUGLOG("[CAM] %s: **** DXO DPP CHECK ****\n", __func__);
+	udwSpiBaseIndex = 0x010000;
+	SPI_Write(YUSHAN_HOST_IF_SPI_BASE_ADDRESS, 4, (uint8_t *)(&udwSpiBaseIndex));
+	YUSHAN_DPP_REGISTER_CHECK(DxODPP_ucode_id_7_0);
+	YUSHAN_DPP_REGISTER_CHECK(DxODPP_ucode_id_15_8);
+	YUSHAN_DPP_REGISTER_CHECK(DxODPP_hw_id_7_0);
+	YUSHAN_DPP_REGISTER_CHECK(DxODPP_hw_id_15_8);
+	YUSHAN_DPP_REGISTER_CHECK(DxODPP_calib_id_0_7_0);
+	YUSHAN_DPP_REGISTER_CHECK(DxODPP_calib_id_1_7_0);
+	YUSHAN_DPP_REGISTER_CHECK(DxODPP_calib_id_2_7_0);
+	YUSHAN_DPP_REGISTER_CHECK(DxODPP_calib_id_3_7_0);
+	YUSHAN_DPP_REGISTER_CHECK(DxODPP_error_code_7_0);
+	YUSHAN_DPP_REGISTER_CHECK(DxODPP_frame_number_7_0);
+	YUSHAN_DPP_REGISTER_CHECK(DxODPP_frame_number_15_8);
+	udwSpiBaseIndex = 0x08000;
+	SPI_Write(YUSHAN_HOST_IF_SPI_BASE_ADDRESS, 4, (uint8_t *)(&udwSpiBaseIndex));
+
+	DEBUGLOG("[CAM] %s: **** DXO DOP CHECK ****\n", __func__);
+	YUSHAN_DOP_REGISTER_CHECK(DxODOP_ucode_id_7_0);
+	YUSHAN_DOP_REGISTER_CHECK(DxODOP_ucode_id_15_8);
+	YUSHAN_DOP_REGISTER_CHECK(DxODOP_hw_id_7_0);
+	YUSHAN_DOP_REGISTER_CHECK(DxODOP_hw_id_15_8);
+	YUSHAN_DOP_REGISTER_CHECK(DxODOP_calib_id_0_7_0);
+	YUSHAN_DOP_REGISTER_CHECK(DxODOP_calib_id_1_7_0);
+	YUSHAN_DOP_REGISTER_CHECK(DxODOP_calib_id_2_7_0);
+	YUSHAN_DOP_REGISTER_CHECK(DxODOP_calib_id_3_7_0);
+	YUSHAN_DOP_REGISTER_CHECK(DxODOP_error_code_7_0);
+	YUSHAN_DOP_REGISTER_CHECK(DxODOP_frame_number_7_0);
+	YUSHAN_DOP_REGISTER_CHECK(DxODOP_frame_number_15_8);
+
+	VERBOSELOG("[CAM] %s: End\n", __func__);
 }
 

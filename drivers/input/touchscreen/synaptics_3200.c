@@ -1551,8 +1551,6 @@ static void synaptics_ts_finger_func(struct synaptics_ts_data *ts)
 				input_report_abs(ts->input_dev, ABS_MT_POSITION, 1 << 31);
 			}
 
-			if (!ts->first_pressed)
-				ts->first_pressed = 1;
 #ifdef SYN_FILTER_CONTROL
 			if (ts->filter_level[0])
 				ts->ambiguous_state = 0;
@@ -1584,6 +1582,8 @@ static void synaptics_ts_finger_func(struct synaptics_ts_data *ts)
 						swap(finger_data[i][0], finger_data[i][1]);
 					if ((finger_release_changed & BIT(i)) && ts->pre_finger_data[0][0] < 2) {
 						if (!ts->first_pressed) {
+							if (ts->finger_count == 0)
+								ts->first_pressed = 1;
 							printk(KERN_INFO "[TP] E%d@%d, %d\n", i + 1,
 							finger_data[i][0], finger_data[i][1]);
 						}

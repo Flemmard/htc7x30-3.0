@@ -138,6 +138,7 @@ do {									\
 				 */
 #define WL_FILE_NAME_MAX		256
 #define WL_DWELL_TIME 	200
+#define WL_MED_DWELL_TIME       400
 #define WL_LONG_DWELL_TIME 1000
 #define IFACE_MAX_CNT 		2
 
@@ -449,6 +450,11 @@ struct wl_priv {
 	struct afx_hdl *afx_hdl;
 	struct ap_info *ap_info;
 	struct sta_info *sta_info;
+//BRCM APSTA START
+#ifdef APSTA_CONCURRENT
+	bool apsta_concurrent;
+#endif
+//BRCM APSTA END
 	struct p2p_info *p2p;
 	bool p2p_supported;
 	struct btcoex_info *btcoex_info;
@@ -485,9 +491,11 @@ static inline void
 wl_dealloc_netinfo(struct wl_priv *wl, struct net_device *ndev)
 {
 	struct net_info *_net_info, *next;
-
+        printk("[%s] ndev->name[%s]",__FUNCTION__,ndev->name);
 	list_for_each_entry_safe(_net_info, next, &wl->net_list, list) {
 		if (ndev && (_net_info->ndev == ndev)) {
+                  if((&_net_info->list)->next == LIST_POISON1 || (&_net_info->list)->prev == LIST_POISON2)
+                        continue;
 			list_del(&_net_info->list);
 			wl->iface_cnt--;
 			kfree(_net_info->wdev);
@@ -658,6 +666,7 @@ extern s32 wl_cfg80211_set_wps_p2p_ie(struct net_device *net, char *buf, int len
 	enum wl_management_type type);
 extern s32 wl_cfg80211_set_p2p_ps(struct net_device *net, char* buf, int len);
 extern int wl_cfg80211_hang(struct net_device *dev, u16 reason);
+extern int wl_cfg80211_rssilow(struct net_device *dev);
 extern s32 wl_mode_to_nl80211_iftype(s32 mode);
 extern s32 wl_cfg80211_set_mpc(struct net_device *net, char* buf, int len);
 extern s32 wl_cfg80211_deauth_sta(struct net_device *net, char* buf, int len);

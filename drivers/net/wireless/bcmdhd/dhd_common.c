@@ -73,6 +73,10 @@ char fw_path2[MOD_PARAM_PATHLEN];
 extern bool softap_enabled;
 #endif
 
+#ifdef BCM4329_LOW_POWER
+extern int LowPowerMode;
+#endif
+
 /* Last connection success/failure status */
 uint32 dhd_conn_event;
 uint32 dhd_conn_status;
@@ -964,6 +968,10 @@ wl_show_host_event(wl_event_msg_t *event, void *event_data)
 }
 #endif /* SHOW_EVENTS */
 
+#ifdef SOFTAP
+extern struct net_device *ap_net_dev;
+#endif
+
 int
 wl_host_event(dhd_pub_t *dhd_pub, int *ifidx, void *pktdata,
               wl_event_msg_t *event, void **data_ptr)
@@ -1048,6 +1056,9 @@ wl_host_event(dhd_pub_t *dhd_pub, int *ifidx, void *pktdata,
 #endif /* WL_CFG80211 */
 				if (ifevent->ifidx > 0 && ifevent->ifidx < DHD_MAX_IFS) {
 					if (ifevent->action == WLC_E_IF_ADD) {
+#ifdef SOFTAP
+				    if ( !ap_net_dev )
+#endif 
 						if (dhd_add_if(dhd_pub->info, ifevent->ifidx,
 							NULL, event->ifname,
 							event->addr.octet,
@@ -1193,6 +1204,13 @@ wl_pattern_atoh(char *src, char *dst)
 }
 
 #ifdef CUSTOMER_HW2
+
+//BRCM APSTA START
+#if defined(APSTA_CONCURRENT) && defined(SOFTAP)
+extern struct net_device *ap_net_dev;
+#endif
+//BRCM APSTA END
+
 /* HTC_CSP_START */
 extern bool hasDLNA;
 extern char ip_str[32];
@@ -1214,10 +1232,11 @@ int dhd_set_pktfilter(dhd_pub_t * dhd, int add, int id, int offset, char *mask, 
 
 /* HTC_CSP_START */
 #ifdef BCM4329_LOW_POWER
-	if (add == 1 && pkt_id == 105)
-	{
-		printf("MCAST packet filter, hasDLNA is true\n");
-		hasDLNA = true;
+	if (LowPowerMode == 1) {
+		if (add == 1 && pkt_id == 105) {
+			printf("MCAST packet filter, hasDLNA is true\n");
+			hasDLNA = true;
+		}
 	}
 #endif
 /* HTC_CSP_END */
@@ -1232,6 +1251,15 @@ int dhd_set_pktfilter(dhd_pub_t * dhd, int add, int id, int offset, char *mask, 
 	/* delete it */
 	bcm_mkiovar("pkt_filter_delete", (char *)&pkt_id, 4, buf, sizeof(buf));
 	dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, buf, sizeof(buf), TRUE, 0);
+
+//BRCM APSTA START
+#if defined(APSTA_CONCURRENT) && defined(SOFTAP)
+	if ( ap_net_dev ) {
+		printf("%s: apsta concurrent running, just add but don't enable rule id:%d\n", __FUNCTION__, pkt_id);
+		return 0;
+	}	
+#endif
+//BRCM APSTA END
 
 	if (!add) {
 		return 0;
@@ -1266,9 +1294,11 @@ int dhd_set_pktfilter(dhd_pub_t * dhd, int add, int id, int offset, char *mask, 
 
 /* HTC_CSP_START */
 #ifdef BCM4329_LOW_POWER
-	if (add == 1 && id == 101){
-		memcpy(ip_str, pattern+78, 8);
-		DHD_TRACE(("ip: %s", ip_str));
+	if (LowPowerMode == 1) {
+		if (add == 1 && id == 101) {
+			memcpy(ip_str, pattern+78, 8);
+			DHD_TRACE(("ip: %s", ip_str));
+		}
 	}
 #endif
 /* HTC_CSP_END */

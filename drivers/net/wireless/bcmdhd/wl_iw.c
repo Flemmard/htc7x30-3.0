@@ -90,7 +90,9 @@ typedef const struct si_pub  si_t;
 
 #include <wl_iw.h>
 
-
+//BRCM_APSTA_START
+#include <wl_cfg80211.h>
+//BRCM_APSTA_END
 
 
 #ifdef BCMWAPI_WPI
@@ -164,7 +166,7 @@ bool apsta_enable = FALSE;
 extern bool ap_fw_loaded;
 struct net_device *ap_net_dev = NULL;
 tsk_ctl_t ap_eth_ctl;  
-static int wl_iw_set_ap_security(struct net_device *dev, struct ap_profile *ap);
+int wl_iw_set_ap_security(struct net_device *dev, struct ap_profile *ap);
 int wl_iw_softap_deassoc_stations(struct net_device *dev, u8 *mac);
 void wl_iw_apsta_restart(struct work_struct *work);
 DECLARE_DELAYED_WORK(restart_apsta, wl_iw_apsta_restart);
@@ -219,6 +221,7 @@ uint wl_msg_level = WL_ERROR_VAL;
 /* HTC_CSP_START */
 #ifdef BCM4329_LOW_POWER
 char gatewaybuf[8+1]; //HTC_KlocWork
+extern int LowPowerMode;
 extern bool hasDLNA;
 extern bool allowMulticast;
 extern int dhd_set_keepalive(int value);
@@ -939,6 +942,49 @@ wl_iw_set_project(
 
         return 0;
 }
+
+#ifdef BCM4329_LOW_POWER
+static int
+wl_iw_set_lowpowermode(
+	struct net_device *dev,
+	struct iw_request_info *info,
+	union iwreq_data *wrqu,
+	char *extra
+)
+{
+	char *p = extra;
+	char *s;
+	int set_val;
+
+	WL_TRACE(("%s\n", __func__));
+	s =  extra + strlen("SET_LOWPOWERMODE") + 1;
+	set_val = bcm_atoi(s);
+
+	/* 1. change power mode
+	  * 2. change dtim listen interval
+	  * 3. lock/unlock cpu freq
+	 */
+
+	switch (set_val) {
+	case 0:
+		printf("LowPowerMode: %d\n", set_val);
+		LowPowerMode = 0;
+		break;
+	case 1:
+		printf("LowPowerMode: %d\n", set_val);
+		LowPowerMode = 1;
+		break;
+	default:
+		WL_ERROR(("%s: not support mode: %d\n", __func__, set_val));
+		break;
+
+	}
+
+	p += snprintf(p, MAX_WX_STRING, "OK");
+	wrqu->data.length = p - extra + 1;
+	return 0;
+}
+#endif /* #ifdef BCM4329_LOW_POWER */
 #endif /* #if !defined(WL_CFG80211) */
 /* HTC_CSP_END */
 
@@ -2686,7 +2732,7 @@ wl_iw_control_wl_on(
 static struct ap_profile my_ap;
 static int set_ap_cfg(struct net_device *dev, struct ap_profile *ap);
 #ifndef AP_ONLY
-static int set_apsta_cfg(struct net_device *dev, struct ap_profile *ap); 
+int set_apsta_cfg(struct net_device *dev, struct ap_profile *ap); 
 #endif
 static int get_assoc_sta_list(struct net_device *dev, char *buf, int len);
 static int set_ap_mac_list(struct net_device *dev, void *buf);
@@ -2736,8 +2782,7 @@ hstr_2_buf(const char *txt, u8 *buf, int len)
 
 
 #ifdef SOFTAP
-static int
-init_ap_profile_from_string(char *param_str, struct ap_profile *ap_cfg)
+int init_ap_profile_from_string(char *param_str, struct ap_profile *ap_cfg)
 {
 	char *str_ptr = param_str;
 	char sub_cmd[16];
@@ -3075,6 +3120,33 @@ static int iwpriv_set_ap_sta_disassoc(struct net_device *dev,
 
 	return res;
 }
+
+//BRCM WPSAP START
+#ifdef BRCM_WPSAP
+static int iwpriv_set_ap_sta_registra_wsec(struct net_device *dev,
+		struct iw_request_info *info,
+		union iwreq_data *wrqu,
+		char *ext)
+{
+		return 0;
+#if 0
+		int res = 0;
+		int wsec = 0;
+
+		dev_wlc_intvar_get(dev, "wsec", &wsec);
+		WL_ERROR(("### %s devname[%s],got wsec(bset)=0x%x\n", __FUNCTION__, dev->name, wsec));
+		wsec |= SES_OW_ENABLED;
+		WL_ERROR(("### %s devname[%s],wsec=0x%x\n", __FUNCTION__, dev->name, wsec));
+		dev_wlc_intvar_set(dev, "wsec", wsec);
+		WL_ERROR(("### %s devname[%s] seting\n", __FUNCTION__, dev->name));
+		dev_wlc_intvar_get(dev, "wsec", &wsec);
+		WL_ERROR(("### %s devname[%s],got(aset) wsec=0x%x\n", __FUNCTION__, dev->name, wsec));
+		return res;
+#endif
+}
+#endif /* BRCM_WPSAP */
+//BRCM WPSAP END
+
 #endif 
 
 #endif 
@@ -7668,8 +7740,9 @@ get_softap_auto_channel(struct net_device *dev, struct ap_profile *ap)
 	int updown = 0;
 	wlc_ssid_t null_ssid;
 	int res = 0;
+#ifdef AP_ONLY
 	int spec = 0;
-#ifndef AP_ONLY
+#else
 	int iolen = 0;
 	int mkvar_err = 0;
 	int bsscfg_index = 1;
@@ -8088,7 +8161,67 @@ fail:
  * broadcom, try to enable the apsta concurrent on Android. add this function 
  * to preinit apsta's ap before wifi-tethering enabling.
  */
-static int set_apsta_cfg(struct net_device *dev, struct ap_profile *ap)
+
+//BRCM_APSTA_START
+extern struct wl_priv *wlcfg_drv_priv;
+
+int set_ap_channel(struct net_device *dev, struct ap_profile *ap)
+{
+
+		int res = 0;
+
+		int test11 = 0;
+		test11 = wl_get_drv_status(wlcfg_drv_priv,DISCONNECTING,dev);
+		//printf("1 test11[%d]",test11);
+		test11 = wl_get_drv_status(wlcfg_drv_priv,READY,dev);
+		//printf("2 test11[%d]",test11);
+		test11 = wl_get_drv_status(wlcfg_drv_priv,AP_CREATING,dev);
+		//printf("3 test11[%d]",test11);
+		test11 = wl_get_drv_status(wlcfg_drv_priv,AP_CREATED,dev);
+		//printf("4 test11[%d]",test11);
+		test11 = wl_get_drv_status(wlcfg_drv_priv,SCANNING,dev);
+		//printf("5 test11[%d]",test11);
+		test11 = wl_get_drv_status(wlcfg_drv_priv,SCAN_ABORTING,dev);
+		//printf("6 test11[%d]",test11);
+		if(!wl_get_drv_status(wlcfg_drv_priv,CONNECTED,dev)){
+
+			int band;
+			int channel = ap->channel;
+			int updown = 0;
+			
+			printf(" %s Hugh enter set channel \n",__FUNCTION__);
+			if ((res = dev_wlc_ioctl(dev, WLC_DOWN, &updown, sizeof(updown)))) {
+				WL_ERROR(("%s fail to set down\n", __FUNCTION__));
+			}
+			else{
+				bcm_mdelay(100);
+				band = (ap->channel >> 16) ? WLC_BAND_5G : WLC_BAND_2G;
+				printf("band[%d]\n",band);
+				if (band == WLC_BAND_5G && (res = dev_wlc_ioctl(dev, WLC_SET_BAND, &band, sizeof(band)))) {
+					printf("%s fail to set band\n", __FUNCTION__);
+				}
+				//bcm_mdelay(1000);
+				if(ap->channel == 0)
+					ap->channel = 6;
+				channel = (band != WLC_BAND_5G) ? (ap->channel & 0x0000ffff) : (ap->channel >> 16);
+				printf("set channel = %d, band = %d\n", channel, band);
+				
+				if ((res = dev_wlc_ioctl(dev, WLC_SET_CHANNEL, &channel, sizeof(channel)))) {
+					printf("%s fail to set channel\n", __FUNCTION__);
+	
+				}
+				bcm_mdelay(100);
+				updown = 1;
+				if ((res = dev_wlc_ioctl(dev, WLC_UP, &updown, sizeof(updown)))){
+					WL_ERROR(("%s fail to set up\n", __FUNCTION__));
+				}
+			}
+		}
+		return res;
+}
+//BRCM_APSTA_END
+ 
+int set_apsta_cfg(struct net_device *dev, struct ap_profile *ap)
 {
 	wl_iw_t *iw = *(wl_iw_t **)netdev_priv(dev);
 	wlc_ssid_t ap_ssid;
@@ -8203,11 +8336,30 @@ fail:
 
 	return res;
 }
+
+//BRCM APSTA START
+#ifdef APSTA_CONCURRENT
+int wait_for_ap_ready(int sec)
+{
+        if (ap_eth_ctl.thr_pid >= 0) {
+                if (!wait_for_completion_timeout(&(ap_eth_ctl.completed), sec*HZ)){
+                        WL_ERROR(("Wait ap start thread timeout!\n"));
+                        return -1;
+                }
+                ap_eth_ctl.thr_pid = -1;
+        }
+	
+	/* sleep for save */
+	//msleep(sec*1000);
+
+	return 0;
+}
+#endif
+//BRCM APSTA END
 #endif
 
 
-static int
-wl_iw_set_ap_security(struct net_device *dev, struct ap_profile *ap)
+int wl_iw_set_ap_security(struct net_device *dev, struct ap_profile *ap)
 {
 	int wsec = 0;
 	int wpa_auth = 0;
@@ -8279,8 +8431,13 @@ wl_iw_set_ap_security(struct net_device *dev, struct ap_profile *ap)
 
 		wsec_pmk_t psk;
 		size_t key_len;
-
+//BRCM WPSAP START
+#ifdef BRCM_WPSAP
+        wsec = AES_ENABLED | SES_OW_ENABLED;
+#else
 		wsec = AES_ENABLED;
+#endif /* BRCM_WPSAP */
+//BRCM WPSAP END
 		dev_wlc_intvar_set(dev, "wsec", wsec);
 
 		key_len = strlen(ap->key);
@@ -8326,8 +8483,13 @@ wl_iw_set_ap_security(struct net_device *dev, struct ap_profile *ap)
 		
 		wsec_pmk_t psk;
 		size_t key_len;
-
+//BRCM WPSAP START
+#ifdef BRCM_WPSAP
+        wsec = TKIP_ENABLED | SES_OW_ENABLED;
+#else
 		wsec = TKIP_ENABLED;
+#endif /* BRCM_WPSAP */
+//BRCM WPSAP END
 		res = dev_wlc_intvar_set(dev, "wsec", wsec);
 
 		key_len = strlen(ap->key);
@@ -8525,7 +8687,44 @@ int wl_iw_softap_deassoc_stations(struct net_device *dev, u8 *mac)
 	return res;
 }
 
+//BRCM APSTA START
+#ifdef APSTA_CONCURRENT 
+int wl_softap_stop(struct net_device *dev)
+{
+        int res = 0;
 
+        WL_SOFTAP(("got AP_BSS_STOP \n"));
+
+        if (!dev) {
+                WL_ERROR(("%s: dev is null\n", __FUNCTION__));
+                return res;
+        }
+
+        net_os_wake_lock(dev);
+        DHD_OS_MUTEX_LOCK(&wl_softap_lock);
+
+        if  ((ap_cfg_running == TRUE)) {
+				//disable this function to avoid station disconnet also.
+                //wl_iw_softap_deassoc_stations(ap_net_dev, NULL);
+                if ((res = dev_iw_write_cfg1_bss_var(dev, 2)) < 0)
+                        WL_ERROR(("%s failed to del BSS err = %d", __FUNCTION__, res));
+
+                bcm_mdelay(100);
+
+                ap_cfg_running = FALSE;
+                wl_iw_send_priv_event(priv_dev, "AP_DOWN");
+        } else
+                WL_ERROR(("%s: was called when SoftAP is OFF : move on\n", __FUNCTION__));
+
+        WL_SOFTAP(("%s Done with %d\n", __FUNCTION__, res));
+        DHD_OS_MUTEX_UNLOCK(&wl_softap_lock);
+        net_os_wake_unlock(dev);
+
+        return res;
+
+}
+#endif
+//BRCM APSTA END
 
 static int
 iwpriv_softap_stop(struct net_device *dev,
@@ -8748,7 +8947,7 @@ iwpriv_en_ap_bss(
 	
 #ifndef AP_ONLY
 	if (ap_eth_ctl.thr_pid >= 0) {
-		if (!wait_for_completion_timeout(&ap_eth_ctl->completed, 2*HZ))
+		if (!wait_for_completion_timeout(&ap_eth_ctl.completed, 2*HZ))
 		{
 			WL_ERROR(("Can't get AP interface!\n"));
 			return -1;
@@ -8812,7 +9011,20 @@ get_assoc_sta_list(struct net_device *dev, char *buf, int len)
 		__FUNCTION__, dev, WLC_GET_ASSOCLIST, buf, len));
 
 	maclist->count = 8;
+//BRCM APSTA START
+#ifdef APSTA_CONCURRENT
+	if (ap_net_dev){
+		ret = dev_wlc_ioctl(ap_net_dev, WLC_GET_ASSOCLIST, buf, len);
+	} else {
+		WL_ERROR(("%s: ap_net_dev is null, failed to get assoc list.\n", __FUNCTION__));
+		ret = -1;
+	}
+#else
+//BRCM APSTA END
 	ret = dev_wlc_ioctl(dev, WLC_GET_ASSOCLIST, buf, len);
+//BRCM APSTA START
+#endif
+//BRCM APSTA END
 
 	if (ret != 0) {
 		WL_SOFTAP(("get assoc count fail\n"));
@@ -9281,6 +9493,35 @@ wl_iw_set_priv(
 			ret = wl_iw_set_pno_enable(dev, info, (union iwreq_data *)dwrq, extra);
 		else if (strnicmp(extra, "PFN_REMOVE", strlen("PFN_REMOVE")) == 0)
 			ret = wl_iw_del_pfn(dev, info, (union iwreq_data *)dwrq, extra);
+//BRCM WPSAP START
+#ifdef BRCM_WPSAP
+		else if (strnicmp(extra, "SET_WSEC", strlen("SET_WSEC")) == 0) {
+			printk("[WLAN] %s SET_WSEC\n",__FUNCTION__);
+			iwpriv_set_ap_sta_registra_wsec(dev, info, (union iwreq_data *)dwrq, extra);
+		}
+		else if (strnicmp(extra, "WPS_RESULT", strlen("WPS_RESULT")) == 0) {
+			unsigned char result;
+			result = *(extra + PROFILE_OFFSET);
+			WL_ERROR(("%s WPS_RESULT result = %d\n",__FUNCTION__,result));
+			if(result == 1)
+				wl_iw_send_priv_event(dev, "WPS_SUCCESSFUL");
+			else
+				wl_iw_send_priv_event(dev, "WPS_FAIL");
+			//iwpriv_set_ap_sta_registra_wsec(dev, info, (union iwreq_data *)dwrq, extra);
+		}
+//L2_PROFILE_EXCHANGE+
+        else if (strnicmp(extra, "L2PE_RESULT", strlen("L2PE_RESULT")) == 0) {
+            unsigned char result;
+            result = *(extra + PROFILE_OFFSET);
+            WL_ERROR(("%s L2PE_RESULT result = %d\n",__FUNCTION__,result));
+            if(result == 1)
+                wl_iw_send_priv_event(dev, "L2PE_SUCCESSFUL");
+            else
+                wl_iw_send_priv_event(dev, "L2PE_FAIL");
+        }
+//L2_PROFILE_EXCHANGE-
+#endif /* BRCM_WPSAP */
+//BRCM WPSAP END
 #endif 
 #if !defined(WL_CFG80211)
 #if defined(CSCAN)
@@ -9364,20 +9605,17 @@ wl_iw_set_priv(
 /* HTC_CSP_START */
 #ifdef BCM4329_LOW_POWER
 			struct dd_pkt_filter_s *data = (struct dd_pkt_filter_s *)&extra[32];
-			 if ((data->id == ALLOW_IPV6_MULTICAST) || (data->id == ALLOW_IPV4_MULTICAST))
-			 {
-
-			     if (strnicmp(extra, "RXFILTER-ADD", strlen("RXFILTER-ADD")) == 0)
-			     {
-			         WL_TRACE(("RXFILTER-ADD MULTICAST filter\n"));
-			         allowMulticast = false;
-			     }
-			     else
-			     {
-			          WL_TRACE(("RXFILTER-REMOVE MULTICAST filter\n"));
-			          allowMulticast = true;
-			     }
-			 }
+			if (LowPowerMode == 1) {
+				if ((data->id == ALLOW_IPV6_MULTICAST) || (data->id == ALLOW_IPV4_MULTICAST)) {
+					if (strnicmp(extra, "RXFILTER-ADD", strlen("RXFILTER-ADD")) == 0) {
+						WL_TRACE(("RXFILTER-ADD MULTICAST filter\n"));
+						allowMulticast = false;
+					} else {
+						WL_TRACE(("RXFILTER-REMOVE MULTICAST filter\n"));
+						allowMulticast = true;
+					}
+				}
+			}
 #endif
 /* HTC_CSP_END */
 			wl_iw_set_pktfilter(dev, (struct dd_pkt_filter_s *)&extra[32]);
@@ -9421,6 +9659,12 @@ wl_iw_set_priv(
 			WL_TRACE(("SET_PROJECT\n"));
 			wl_iw_set_project(dev, info, (union iwreq_data *)dwrq, extra);
 		}
+#ifdef BCM4329_LOW_POWER
+		else if (strnicmp(extra, "SET_LOWPOWERMODE", strlen("SET_LOWPOWERMODE")) == 0) {
+			WL_TRACE(("SET_LOWPOWERMODE\n"));
+			wl_iw_set_lowpowermode(dev, info, (union iwreq_data *)dwrq, extra);
+		}
+#endif
 /* HTC_CSP_END */
 #endif
 	    else {
@@ -9600,6 +9844,12 @@ static const iw_handler wl_iw_priv_handler[] = {
 	NULL, 
 	(iw_handler)iwpriv_set_ap_sta_disassoc,
 #endif 
+//BRCM WPSAP START
+#ifdef BRCM_WPSAP
+	NULL,
+	(iw_handler)iwpriv_set_ap_sta_registra_wsec,
+#endif /* BRCM_WPSAP */
+//BRCM WPSAP END
 #ifndef WL_CFG80211
 #if defined(CSCAN)
 	
@@ -9723,6 +9973,16 @@ static const struct iw_priv_args wl_iw_priv_args[] =
 	},
 #endif 
 #endif 
+//BRCM WPSAP START
+#ifdef BRCM_WPSAP
+	{
+		WL_REGISTRAR_WSEC,
+        IW_PRIV_TYPE_CHAR | IW_PRIV_SIZE_FIXED | 0,
+        IW_PRIV_TYPE_CHAR | IW_PRIV_SIZE_FIXED | 0,
+		"SET_WSEC"
+	},
+#endif /* BRCM_WPSAP */
+//BRCM WPSAP END
 	};
 
 const struct iw_handler_def wl_iw_handler_def =
@@ -9979,6 +10239,8 @@ wl_iw_event(struct net_device *dev, wl_event_msg_t *e, void* data)
 	uint32 datalen = ntoh32(e->datalen);
 	uint32 status =  ntoh32(e->status);
 	uint32 toto;
+	struct wl_priv *wl = wlcfg_drv_priv; //broadcom 0406
+	
 	wl_iw_t *iw = *(wl_iw_t **)netdev_priv(dev);
 	memset(&wrqu, 0, sizeof(wrqu));
 	memset(extra, 0, sizeof(extra));
@@ -10107,9 +10369,10 @@ wl_iw_event(struct net_device *dev, wl_event_msg_t *e, void* data)
 #else
 		if (ap_cfg_running && !strncmp(dev->name, "wl0.1", 5)) {
 #endif	
-			
-			WL_SOFTAP(("AP DOWN %d\n", event_type));
-			wl_iw_send_priv_event(priv_dev, "AP_DOWN");
+			if (!wl->apsta_concurrent) {
+				printf("AP DOWN %d\n", event_type);
+				wl_iw_send_priv_event(priv_dev, "AP_DOWN");
+			}
 		} else {
 			WL_TRACE(("STA_Link Down\n"));
 			/* HTC_CSP_START */
@@ -10145,6 +10408,11 @@ wl_iw_event(struct net_device *dev, wl_event_msg_t *e, void* data)
 			
 				WL_SOFTAP(("AP UP %d\n", event_type));
 				wl_iw_send_priv_event(priv_dev, "AP_UP");
+				//Broadcom 0406
+				if (ap_net_dev) {
+					printf("set ap_net_dev operstate to UP\n");
+					ap_net_dev->operstate = IF_OPER_UP;
+				}
 			} else
 #endif
 		    {
@@ -10646,11 +10914,11 @@ wl_iw_bt_init(struct net_device *dev)
 #endif 
 
 #ifdef SOFTAP
+/* keep the restart function alone for other routines */
 void 
-wl_iw_apsta_restart(struct work_struct *work)
+wl_iw_restart_apsta(struct ap_profile *ap)
 {
         struct net_device *dev = priv_dev;
-        struct ap_profile *ap = &my_ap;
         wlc_ssid_t ap_ssid;
         int max_assoc = 8;
         int res = 0;
@@ -10729,6 +10997,12 @@ fail:
 
     	DHD_OS_MUTEX_UNLOCK(&wl_softap_lock);
 	    net_os_wake_unlock(dev);
+}
+
+void 
+wl_iw_apsta_restart(struct work_struct *work)
+{
+	wl_iw_restart_apsta(&my_ap);	
 }
 #endif 
 
@@ -11046,6 +11320,11 @@ wl_iw_attach(struct net_device *dev, void * dhdp)
 	iw->pub = (dhd_pub_t *)dhdp;
 #ifdef SOFTAP
 	priv_dev = dev;
+//BRCM APSTA START
+#ifdef APSTA_CONCURRENT
+	sema_init(&ap_eth_ctl.sema, 0);
+#endif
+//BRCM APSTA END
 #endif 
 	g_scan = NULL;
 

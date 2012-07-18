@@ -235,6 +235,16 @@ const struct cntry_locales_custom translate_custom_table[] = {
 	{"CH", "CH", 0},
 	{"TR", "TR", 0},
 	{"NO", "NO", 0},
+#else
+	{"KR", "KR", 3},
+	{"AD", "XW", 0},
+	{"CK", "XW", 0},
+	{"GL", "XW", 0},
+	{"KP", "XW", 0},
+	{"MH", "XW", 0},
+	{"PS", "XW", 0},
+	{"SD", "XW", 0},
+	{"TL", "XW", 0},
 #endif /* EXMAPLE_TABLE */
 };
 

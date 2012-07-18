@@ -602,7 +602,7 @@ extern uint dhd_apsta;
 /* Override to force tx queueing all the time */
 extern uint dhd_force_tx_queueing;
 #ifdef CUSTOMER_HW2
-#define KEEP_ALIVE_PERIOD 60000
+#define KEEP_ALIVE_PERIOD 55000
 #else
 /* Default KEEP_ALIVE Period is 55 sec to prevent AP from sending Keep Alive probe frame */
 #define KEEP_ALIVE_PERIOD 55000

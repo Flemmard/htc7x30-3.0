@@ -56,6 +56,7 @@ struct himax_ts_data {
 	uint8_t first_pressed;
 	int pre_finger_data[2];
 	uint8_t suspend_mode;
+	uint8_t last_slot;
 	uint8_t protocol_type;
 	struct himax_i2c_platform_data *pdata;
 	uint32_t event_htc_enable_type;
@@ -831,6 +832,12 @@ inline void himax_ts_work(struct himax_ts_data *ts)
 			ts->protocol_type == PROTOCOL_TYPE_A)
 			input_mt_sync(ts->input_dev);
 
+		if (ts->event_htc_enable_type != SWITCH_TO_HTC_EVENT_ONLY &&
+			ts->protocol_type == PROTOCOL_TYPE_B) {
+			input_mt_slot(ts->input_dev, ts->last_slot);
+			input_mt_report_slot_state(ts->input_dev, MT_TOOL_FINGER, 0);
+		}
+
 		if (ts->first_pressed == 1) {
 			ts->first_pressed = 2;
 			printk(KERN_INFO "[TP]E1@%d, %d\n",
@@ -872,6 +879,7 @@ inline void himax_ts_work(struct himax_ts_data *ts)
 					input_report_abs(ts->input_dev, ABS_MT_TRACKING_ID, loop_i);
 					input_mt_sync(ts->input_dev);
 				} else {
+					ts->last_slot = loop_i;
 					input_mt_report_slot_state(ts->input_dev, MT_TOOL_FINGER, 1);
 				}
 

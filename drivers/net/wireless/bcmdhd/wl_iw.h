@@ -101,7 +101,11 @@ struct cntry_locales_custom {
 /* HTC_CSP_END */
 #define WL_AP_STA_DISASSOC		(SIOCIWFIRSTPRIV+31)
 #define WL_COMBO_SCAN           (SIOCIWFIRSTPRIV+33)
-
+//BRCM WPSAP START
+#ifdef BRCM_WPSAP
+#define WL_REGISTRAR_WSEC       (SIOCIWFIRSTPRIV+35)
+#endif /* BRCM_WPSAP */
+//BRCM WPSAP END
 
 #define			G_SCAN_RESULTS 8*1024
 #define 		WE_ADD_EVENT_FIX	0x80

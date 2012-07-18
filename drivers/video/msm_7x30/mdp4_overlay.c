@@ -222,25 +222,25 @@ int mdp4_overlay_parameters_check(struct mdp4_overlay_pipe *pipe)
 			return -EPERM;
 		}
 	}
-	if (pipe->dst_x < 0 || pipe->dst_x >= fb_width) {
+	if (pipe->dst_x >= fb_width) {
 
 		PR_DISP_WARN("%s(%d) Incorrect parameter dstx=%d", __func__, __LINE__, pipe->dst_x);
 		return -ERANGE;
 	}
 
-	if (pipe->dst_y < 0 || pipe->dst_y >= fb_height) {
+	if (pipe->dst_y >= fb_height) {
 
 		PR_DISP_WARN("%s(%d) Incorrect parameter dsty=%d", __func__, __LINE__, pipe->dst_y);
 		return -ERANGE;
 	}
 
-	if (pipe->dst_w < 0 || pipe->dst_w > fb_width) {
+	if (pipe->dst_w > fb_width) {
 
 		PR_DISP_WARN("%s(%d) Incorrect parameter dstw=%d", __func__, __LINE__, pipe->dst_w);
 		return -ERANGE;
 	}
 
-	if (pipe->dst_y < 0 || pipe->dst_y > fb_height) {
+	if (pipe->dst_y > fb_height) {
 
 		PR_DISP_WARN("%s(%d) Incorrect parameter2 dsty=%d", __func__, __LINE__, pipe->dst_y);
 		return -ERANGE;
@@ -507,11 +507,68 @@ void mdp4_overlay_rgb_setup(struct mdp4_overlay_pipe *pipe)
 	mdp_writel(pipe->mdp, pipe->phasey_step, rgb_base + 0x0060);
 }
 
+static void mdp4_overlay_vg_get_src_offset(struct mdp4_overlay_pipe *pipe,
+	uint32_t vg_base, uint32_t *luma_off, uint32_t *chroma_off)
+{
+	uint32_t src_xy;
+	*luma_off = 0;
+	*chroma_off = 0;
+
+	if (pipe->src_x && (pipe->frame_format == MDP4_FRAME_FORMAT_LINEAR)) {
+		src_xy = (pipe->src_y << 16) | pipe->src_x;
+		src_xy &= 0xffff0000;
+	    mdp_writel(pipe->mdp, src_xy, vg_base + 0x0004); /* MDP_RGB_SRC_XY */
+
+		switch (pipe->src_format) {
+		case MDP_Y_CR_CB_H2V2:
+		case MDP_Y_CR_CB_GH2V2:
+		case MDP_Y_CB_CR_H2V2:
+				*luma_off = pipe->src_x;
+				*chroma_off = pipe->src_x/2;
+			break;
+
+		case MDP_Y_CBCR_H2V2_TILE:
+		case MDP_Y_CRCB_H2V2_TILE:
+		case MDP_Y_CBCR_H2V2:
+		case MDP_Y_CRCB_H2V2:
+		case MDP_Y_CRCB_H1V1:
+		case MDP_Y_CBCR_H1V1:
+		case MDP_Y_CRCB_H2V1:
+		case MDP_Y_CBCR_H2V1:
+			*luma_off = pipe->src_x;
+			*chroma_off = pipe->src_x;
+			break;
+
+		case MDP_YCRYCB_H2V1:
+			if (pipe->src_x & 0x1)
+				pipe->src_x += 1;
+			*luma_off += pipe->src_x * 2;
+			break;
+
+		case MDP_ARGB_8888:
+		case MDP_RGBA_8888:
+		case MDP_BGRA_8888:
+		case MDP_RGBX_8888:
+		case MDP_RGB_565:
+		case MDP_BGR_565:
+		case MDP_XRGB_8888:
+		case MDP_RGB_888:
+			*luma_off = pipe->src_x * pipe->bpp;
+			break;
+
+		default:
+			pr_err("Source format %u not supported for x offset adjustment\n",
+				pipe->src_format);
+			break;
+		}
+	}
+}
+
 int mdp4_overlay_vg_setup(struct mdp4_overlay_pipe *pipe)
 {
 	uint32_t vg_base;
 	uint32_t frame_size, src_size, src_xy, dst_size, dst_xy;
-	uint32_t format, pattern;
+	uint32_t format, pattern, luma_offset, chroma_offset;
 	uint32_t dst_newx = 0, dst_newy = 0;
 	int pnum, ret = 0;
 
@@ -537,10 +594,11 @@ int mdp4_overlay_vg_setup(struct mdp4_overlay_pipe *pipe)
 	pipe->op_mode = 0;
 #endif
 
+    luma_offset = 0;
+    chroma_offset = 0;
 	/* not RGB use VG pipe */
 	if (pipe->pipe_type != OVERLAY_TYPE_RGB)
 		pipe->op_mode |= (MDP4_OP_CSC_EN | MDP4_OP_SRC_DATA_YCBCR);
-
 
 	mdp4_scale_setup(pipe);
 
@@ -566,26 +624,33 @@ int mdp4_overlay_vg_setup(struct mdp4_overlay_pipe *pipe)
 	} else
 		dst_xy |= pipe->dst_x;
 
-	if (pipe->dst_x < 0 || pipe->dst_y < 0) {
-		PR_DISP_ERR("%s(%d) Incorrect overlay input pipex=%d pipey=%d newx=%d newy=%d width=%d height=%d\n",
-			__func__, __LINE__, pipe->dst_x, pipe->dst_y, dst_newx, dst_newy,
-			pipe->mdp->mdp_dev.width, pipe->mdp->mdp_dev.height);
-	}
-
 	mdp_writel(pipe->mdp, src_size, vg_base + 0x0000);	/* MDP_RGB_SRC_SIZE */
 	mdp_writel(pipe->mdp, src_xy, vg_base + 0x0004);	/* MDP_RGB_SRC_XY */
 	mdp_writel(pipe->mdp, dst_size, vg_base + 0x0008);	/* MDP_RGB_DST_SIZE */
 	mdp_writel(pipe->mdp, dst_xy, vg_base + 0x000c);	/* MDP_RGB_DST_XY */
-	mdp_writel(pipe->mdp, frame_size, vg_base + 0x0048);	/* TILE frame size */
+    if (pipe->frame_format != MDP4_FRAME_FORMAT_LINEAR)
+        mdp_writel(pipe->mdp, frame_size, vg_base + 0x0048);	/* TILE frame size */
+
+
+	if (pipe->pipe_type != OVERLAY_TYPE_RGB){
+        mdp4_overlay_vg_get_src_offset(pipe, vg_base, &luma_offset, &chroma_offset);
+    }
+    else {
+        luma_offset = 0;
+        chroma_offset = 0;
+    }
 
 	/* luma component plane */
-	mdp_writel(pipe->mdp, pipe->srcp0_addr, vg_base + 0x0010);
+	mdp_writel(pipe->mdp, pipe->srcp0_addr + luma_offset, vg_base + 0x0010);
 
 	/* chroma component plane */
-	mdp_writel(pipe->mdp, pipe->srcp1_addr, vg_base + 0x0014);
+	mdp_writel(pipe->mdp, pipe->srcp1_addr + chroma_offset, vg_base + 0x0014);
 
+    /* planar color 2*/
+	mdp_writel(pipe->mdp, pipe->srcp2_addr + chroma_offset, vg_base + 0x0018);
 
 	mdp_writel(pipe->mdp, pipe->srcp1_ystride << 16 | pipe->srcp0_ystride, vg_base + 0x0040);
+	mdp_writel(pipe->mdp, pipe->srcp3_ystride << 16 | pipe->srcp2_ystride, vg_base + 0x0044);
 
 	mdp_writel(pipe->mdp, format, vg_base + 0x0050);	/* MDP_RGB_SRC_FORMAT */
 	mdp_writel(pipe->mdp, pattern, vg_base + 0x0054);	/* MDP_RGB_SRC_UNPACK_PATTERN */
@@ -616,6 +681,7 @@ int mdp4_overlay_format2type(uint32_t format)
 	case MDP_Y_CBCR_H2V1:
 	case MDP_Y_CRCB_H2V2:
 	case MDP_Y_CBCR_H2V2:
+	case MDP_Y_CR_CB_GH2V2:
 	case MDP_Y_CBCR_H2V2_TILE:
 	case MDP_Y_CRCB_H2V2_TILE:
 		return OVERLAY_TYPE_VIDEO;
@@ -844,6 +910,19 @@ int mdp4_overlay_format2pipe(struct mdp4_overlay_pipe *pipe)
 		}
 		pipe->bpp = 2;	/* 2 bpp */
 		break;
+	case MDP_Y_CR_CB_H2V2:
+	case MDP_Y_CR_CB_GH2V2:
+	case MDP_Y_CB_CR_H2V2:
+		pipe->frame_format = MDP4_FRAME_FORMAT_LINEAR;
+		pipe->fetch_plane = OVERLAY_PLANE_PLANAR;
+		pipe->a_bit = 0;
+		pipe->r_bit = 3;	/* R, 8 bits */
+		pipe->b_bit = 3;	/* B, 8 bits */
+		pipe->g_bit = 3;	/* G, 8 bits */
+		pipe->alpha_enable = 0;
+		pipe->chroma_sample = MDP4_CHROMA_420;
+		pipe->bpp = 2;	/* 2 bpp */
+		break;
 	default:
 		/* not likely */
 		return -ERANGE;
@@ -927,6 +1006,8 @@ void transp_color_key(int format, uint32_t transp,
 		break;
 	case MDP_Y_CRCB_H2V2:
 	case MDP_Y_CRCB_H2V1:
+	case MDP_Y_CR_CB_H2V2:
+	case MDP_Y_CR_CB_GH2V2:
 		b_start = 0;
 		g_start = 16;
 		r_start = 8;
@@ -976,7 +1057,8 @@ uint32_t mdp4_overlay_format(struct mdp4_overlay_pipe *pipe)
 
 	format |= (pipe->frame_format << 29);
 
-	if (pipe->fetch_plane == OVERLAY_PLANE_PSEUDO_PLANAR) {
+	if (pipe->fetch_plane == OVERLAY_PLANE_PSEUDO_PLANAR ||
+		pipe->fetch_plane == OVERLAY_PLANE_PLANAR) {
 		/* video/graphic */
 		format |= (pipe->fetch_plane << 19);
 		format |= (pipe->chroma_site << 28);
@@ -1417,7 +1499,9 @@ static int mdp4_overlay_req2pipe(struct mdp_overlay *req, int mixer,
 		return ptype;
 
 	if (req->id == MSMFB_NEW_REQUEST) /* new request */
+	{
 		pipe = mdp4_overlay_pipe_alloc(ptype, true);
+	}
 	else
 		pipe = mdp4_overlay_ndx2pipe(req->id);
 
@@ -1647,28 +1731,27 @@ int mdp4_overlay_alter_req(struct mdp_overlay *req)
 {
 
 	/*1280*720 portrait play*/
-	if (req->src.format == MDP_Y_CRCB_H2V2_TILE &&
-		(req->src.width == 1280 ||
-			req->src.height == 720)
+	if ((req->src.format == MDP_Y_CRCB_H2V2_TILE || req->src.format == MDP_Y_CR_CB_GH2V2)&&
+		(req->src.width == 1280 || req->src.height == 720)
 		) {
 		if (req->dst_rect.w == 480) {
 			if (req->dst_rect.h >= 320 ||
 			(req->dst_rect.h >= 180 &&
 			req->user_data[0] == 0)) {
 			/*1280*720 fix fullscreen cut*/
-			pr_info("%s: reject alter req  of 720p.", __func__);
-			req->src_rect.x = 30;
-			req->src_rect.w = 1180;
+			req->src_rect.x = 40;
+            req->src_rect.y = 10;
+			req->src_rect.w = 1120;
+            req->src_rect.h = 680;
 
 		} else {
-			pr_info("%s: alter req due to down-scaling issue of 720p.",__func__);
-			req->src_rect.x = 30;
-			req->src_rect.w = 1180;
+			req->src_rect.x = 40;
+            req->src_rect.y = 10;
+			req->src_rect.w = 1120;
+            req->src_rect.h = 680;
 		}
 	} else if (req->dst_rect.h == 135 && req->dst_rect.w == 240) {
 	/*720*1280 video trim */
-		pr_info("%s: alter req due to down-scaling issue of 720p(trim).",
-		__func__);
 		req->src_rect.x = 60;
 		req->src_rect.y = 90;
 		req->src_rect.w = 800;
@@ -1975,6 +2058,37 @@ int mdp4_overlay_play(struct mdp_device *mdp_dev, struct fb_info *info, struct m
 
 		pipe->srcp0_ystride = pipe->src_width;
 		pipe->srcp1_ystride = pipe->src_width;
+	} else if (pipe->fetch_plane == OVERLAY_PLANE_PLANAR) {
+
+			if (pipe->src_format == MDP_Y_CR_CB_GH2V2) {
+				addr += (ALIGN(pipe->src_width, 16) *
+					pipe->src_height);
+				pipe->srcp1_addr = addr;
+				addr += ((ALIGN((pipe->src_width / 2), 16)) *
+					(pipe->src_height / 2));
+				pipe->srcp2_addr = addr;
+			} else {
+				addr += (pipe->src_width * pipe->src_height);
+				pipe->srcp1_addr = addr;
+				addr += ((pipe->src_width / 2) *
+					(pipe->src_height / 2));
+				pipe->srcp2_addr = addr;
+			}
+
+		/* mdp planar format expects Cb in srcp1 and Cr in p2 */
+		if ((pipe->src_format == MDP_Y_CR_CB_H2V2) ||
+			(pipe->src_format == MDP_Y_CR_CB_GH2V2))
+			swap(pipe->srcp1_addr, pipe->srcp2_addr);
+
+		if (pipe->src_format == MDP_Y_CR_CB_GH2V2) {
+			pipe->srcp0_ystride = ALIGN(pipe->src_width, 16);
+			pipe->srcp1_ystride = ALIGN(pipe->src_width / 2, 16);
+			pipe->srcp2_ystride = ALIGN(pipe->src_width / 2, 16);
+		} else {
+			pipe->srcp0_ystride = pipe->src_width;
+			pipe->srcp1_ystride = pipe->src_width / 2;
+			pipe->srcp2_ystride = pipe->src_width / 2;
+		}
 	}
 
 	if (pipe->pipe_num >= OVERLAY_PIPE_VG1) {

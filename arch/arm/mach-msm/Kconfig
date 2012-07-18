@@ -519,13 +519,6 @@ config MACH_PRIMOU
        depends on ARCH_MSM7X30
        default n
        bool "Primou"
-       select ARCH_SPARSEMEM_ENABLE
-       select MEMORY_HOTPLUG
-       select MEMORY_HOTREMOVE
-       select ARCH_ENABLE_MEMORY_HOTPLUG
-       select ARCH_ENABLE_MEMORY_HOTREMOVE
-       select ARCH_MEMORY_PROBE
-       select ARCH_MEMORY_REMOVE
        help
          Support for the Qualcomm Primou board.
 

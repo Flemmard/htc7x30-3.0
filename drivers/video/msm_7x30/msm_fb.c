@@ -1118,18 +1118,23 @@ static int msmfb_ioctl(struct fb_info *p, unsigned int cmd, unsigned long arg)
 					if (phys_addr[i] == (void *)usb_pjt_info.latest_offset)
 						break;
 					if (!phys_addr[i]) {
+						int result;
 						unsigned long pmem_vbase;
 						unsigned long pmem_base;
 						unsigned long pmem_size;
 						struct file *map_file;
 						phys_addr[i] = (void *)usb_pjt_info.latest_offset;
 						/* call get_pmem_file only to get information */
-						get_pmem_file((unsigned int)phys_addr[i], &pmem_base, &pmem_vbase, &pmem_size, &map_file);
-						printk(KERN_ERR "%s: phys %p, virt %p\n",
-							__func__, (void *)pmem_base, (void *)pmem_vbase);
-						virt_addr[i] = (void*)pmem_vbase;
-						pmem_mapped++;
-						put_pmem_file(map_file);
+						result = get_pmem_file((unsigned int)phys_addr[i],
+							&pmem_base, &pmem_vbase, &pmem_size, &map_file);
+						if (result == 0) {
+							printk(KERN_ERR "%s: phys %p, virt %p\n",
+								__func__, (void *)pmem_base, (void *)pmem_vbase);
+							virt_addr[i] = (void*)pmem_vbase;
+							pmem_mapped++;
+							put_pmem_file(map_file);
+						} else
+							PR_DISP_ERR("Can't get pmem information with fd.\n");
 						break;
 					}
 				}

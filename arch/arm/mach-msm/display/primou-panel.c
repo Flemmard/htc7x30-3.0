@@ -23,6 +23,7 @@
 #include <linux/clk.h>
 #include <linux/err.h>
 #include <linux/gpio.h>
+#include <linux/workqueue.h>
 
 #include <asm/io.h>
 #include <asm/mach-types.h>
@@ -69,6 +70,9 @@ enum {
 
 enum led_brightness brightness_value = DEFAULT_BRIGHTNESS;
 
+static struct workqueue_struct *primou_cabc_wq;
+static struct delayed_work primou_cabc_work;
+
 extern unsigned long msm_fb_base;
 
 static int
@@ -97,11 +101,17 @@ primou_shrink_pwm(int brightness, int user_def,
 	return brightness;
 }
 
+static void primou_cabc_open(struct work_struct *w)
+{
+	struct msm_mddi_client_data *client = cabc.client_data;
+	PR_DISP_INFO("Open CABC...");
+	client->remote_write(client, 0x2C, 0x5300);
+}
+
 static void
 primou_set_brightness(struct led_classdev *led_cdev,
 				enum led_brightness val)
 {
-	static int enable_fade_on = 1;
 	struct msm_mddi_client_data *client = cabc.client_data;
 	unsigned int shrink_br = val;
 
@@ -124,20 +134,18 @@ primou_set_brightness(struct led_classdev *led_cdev,
 
 	mutex_lock(&cabc.lock);
 
-	if (enable_fade_on) {
-		client->remote_write(client, 0x2C, 0x5300);
-		/* Trigger it once only */
-		enable_fade_on = 0;
-	}
 	client->remote_write(client, shrink_br, 0x5100);
 
+	if (cabc.last_shrink_br == 0 && shrink_br)
+		/* 1ms is not enough, more than 5ms is okay */
+		queue_delayed_work(primou_cabc_wq, &primou_cabc_work, 100);
+
 	/* Update the last brightness */
-	if (cabc.last_shrink_br==0 && shrink_br) enable_fade_on = 1;
 	cabc.last_shrink_br = shrink_br;
 	brightness_value = val;
 	mutex_unlock(&cabc.lock);
 
-	PR_DISP_INFO("[BKL] set brightness to %d(enable_fade_on=%d)\n", shrink_br, enable_fade_on);
+	PR_DISP_INFO("[BKL] set brightness to %d\n", shrink_br);
 }
 
 static enum led_brightness
@@ -306,6 +314,9 @@ primou_backlight_probe(struct platform_device *pdev)
 	err = device_create_file(cabc.lcd_backlight.dev, &auto_attr);
 	if (err)
 		goto err_auto_out;
+
+	primou_cabc_wq = alloc_ordered_workqueue("cabc_wq", 0);
+	INIT_DELAYED_WORK(&(primou_cabc_work), primou_cabc_open);
 
 	return 0;
 
@@ -914,7 +925,8 @@ primou_panel_blank(struct msm_mddi_bridge_platform_data *bridge_data,
 	PR_DISP_DEBUG("%s\n", __func__);
 
 	client_data->auto_hibernate(client_data, 0);
-
+	/* stop running cabc work */
+	cancel_delayed_work_sync(&primou_cabc_work);
 	if (panel_type == PANEL_ID_PRIMO_SONY) {
 		client_data->remote_write(client_data, 0x0, 0x5300);
 		primou_backlight_switch(LED_OFF);

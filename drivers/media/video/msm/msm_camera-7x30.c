@@ -196,14 +196,14 @@ static void msm_enqueue_vpe(struct msm_device_queue *queue,
 	struct msm_queue_cmd *qcmd;				\
 	spin_lock_irqsave(&__q->lock, flags);			\
 	pr_info("[CAM] %s: draining queue %s\n", __func__, __q->name);	\
+	pr_info("[CAM]%s,q->len = %d\n", __func__, __q->len);	\
 	while (!list_empty(&__q->list)) {			\
 		__q->len--;					\
-		pr_info("[CAM]%s,q->len = %d\n", __func__, __q->len);	\
 		qcmd = list_first_entry(&__q->list,		\
 			struct msm_queue_cmd, member);		\
 		if (qcmd) {                         \
 			if ((&qcmd->member) && (&qcmd->member.next) && (&qcmd->member.prev)) \
-				pr_info("[CAM] %s, qcmd->member.next= 0x%p\n", __func__, qcmd->member.next);	\
+				CDBG("[CAM] %s, qcmd->member.next= 0x%p\n", __func__, qcmd->member.next);	\
 				list_del_init(&qcmd->member);			\
 		free_qcmd(qcmd);				\
 		}                                   \
@@ -3190,6 +3190,10 @@ static int __msm_open(struct msm_sync *sync, const char *const apps_id)
 		/* HTC */
 		wake_lock(&sync->wake_suspend_lock);
 		wake_lock(&sync->wake_lock);
+
+		atomic_set(&sync->send_output_s, 0);
+		atomic_set(&sync->num_drop_output_s, 0);
+		pr_info("[CAM] reset num_drop_output_s and send_output_s\n");
 
 		msm_camvfe_fn_init(&sync->vfefn, sync);
 		if (sync->vfefn.vfe_init) {

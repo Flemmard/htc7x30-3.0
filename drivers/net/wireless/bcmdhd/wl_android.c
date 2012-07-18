@@ -100,8 +100,33 @@
 #define CMD_GETWIFILOCK		"GETWIFILOCK"
 #define CMD_SETWIFICALL		"WIFICALL"
 #define CMD_SETPROJECT		"SET_PROJECT"
+#define CMD_SETLOWPOWERMODE		"SET_LOWPOWERMODE"
 #define CMD_GATEWAYADD		"GATEWAY-ADD"
 /* HTC_CSP_END */
+
+//BRCM APSTA START
+#ifdef APSTA_CONCURRENT
+#define CMD_SET_AP_CFG		"SET_AP_CFG"
+#define CMD_GET_AP_STATUS	"GET_AP_STATUS"
+#define CMD_SET_APSTA		"SET_APSTA"
+//Terry 2012-04-25
+#define CMD_SET_BCN_TIMEOUT "SET_BCN_TIMEOUT"
+//Terry 2012-04-25
+//Hugh 2012-03-22 +++
+#define CMD_SET_VENDR_IE    "SET_VENDR_IE"
+#define CMD_ADD_VENDR_IE    "ADD_VENDR_IE"
+#define CMD_DEL_VENDR_IE    "DEL_VENDR_IE"
+#define CMD_SCAN_SUPPRESS   "SCAN_SUPPRESS"
+//Hugh 2012-03-22 +++
+#endif
+//BRCM APSTA END
+
+//BRCM WPSAP START
+#ifdef BRCM_WPSAP
+#define CMD_SET_WSEC		"SET_WSEC"
+#define CMD_WPS_RESULT		"WPS_RESULT"
+#endif /* BRCM_WPSAP */
+//BRCM WPSAP END
 
 #ifdef PNO_SUPPORT
 #define CMD_PNOSSIDCLR_SET	"PNOSSIDCLR"
@@ -147,6 +172,9 @@ void dhd_dev_init_ioctl(struct net_device *dev);
 int wl_cfg80211_get_mac_addr(struct net_device *net, struct ether_addr *mac_addr);
 int wl_cfg80211_get_p2p_dev_addr(struct net_device *net, struct ether_addr *p2pdev_addr);
 int wl_cfg80211_set_btcoex_dhcp(struct net_device *dev, char *command);
+//BRCM APSTA START
+int wl_cfg80211_set_apsta_concurrent(struct net_device *dev, bool enable);
+//BRCM APSTA END
 #else
 int wl_cfg80211_get_p2p_dev_addr(struct net_device *net, struct ether_addr *p2pdev_addr)
 { return 0; }
@@ -184,6 +212,180 @@ int block_ap_event = 0;
 /**
  * Local (static) function definitions
  */
+//BRCM APSTA START
+#ifdef APSTA_CONCURRENT
+static int wl_android_get_ap_status(struct net_device *net, char *command, int total_len)
+{
+	printf("%s: enter, command=%s\n", __FUNCTION__, command);
+	
+	return wldev_get_ap_status(net);
+}
+
+static int wl_android_set_ap_cfg(struct net_device *net, char *command, int total_len)
+{
+	printf("%s: enter, command=%s\n", __FUNCTION__, command);
+
+	wl_cfg80211_set_apsta_concurrent(net, TRUE);
+
+	return wldev_set_apsta_cfg(net, (command + strlen(CMD_SET_AP_CFG) + 1));
+}
+
+static int wl_android_set_apsta(struct net_device *net, char *command, int total_len)
+{
+	int enable = bcm_atoi(command + strlen(CMD_SET_APSTA) + 1);
+
+	printf("%s: enter, command=%s, enable=%d\n", __FUNCTION__, command, enable);
+
+	if (enable) {
+		wldev_set_pktfilter_enable(net, FALSE);
+		wldev_set_apsta(net, TRUE);
+	} else {
+		wldev_set_apsta(net, FALSE);
+		wldev_set_pktfilter_enable(net, TRUE);
+	}		
+
+	return 0;
+}
+//Terry 2012-04-25
+	
+static int wl_android_set_bcn_timeout(struct net_device *dev, char *command, int total_len)
+{
+	int err = -1;
+    	char tran_buf[32] = {0};
+    	char *ptr;
+	int bcn_timeout;
+	ptr = command + strlen(CMD_SET_BCN_TIMEOUT) + 1;
+    	memcpy(tran_buf, ptr, 2);
+    	bcn_timeout = bcm_strtoul(tran_buf, NULL, 10);
+    	printf("%s bcn_timeout[%d]\n",__FUNCTION__,bcn_timeout);
+	if (bcn_timeout > 0 || bcn_timeout < 20) {
+		if ((err = wldev_iovar_setint(dev, "bcn_timeout", bcn_timeout))) {
+			printf("%s: bcn_timeout setting error\n", __func__);		
+		}
+	}
+	else {
+		DHD_ERROR(("%s Incorrect bcn_timeout setting %d, ignored\n", __FUNCTION__, bcn_timeout));
+	}
+	return 0;
+
+}
+//Terry 2012-04-25
+//Hugh 2012-03-22 ++++
+
+vndr_ie_setbuf_t *ie_setbuf = NULL ;
+extern void wldev_del_vendr_ie(struct net_device *dev);
+extern void wldev_add_vendr_ie(struct net_device *dev);
+
+static int
+wl_android_create_wps_ie(char *buf, int ie_len)
+{
+	unsigned int pktflag = VNDR_IE_PRBREQ_FLAG;
+	int iecount;
+    int i;
+
+	if(!ie_setbuf)
+		ie_setbuf = (vndr_ie_setbuf_t *) kmalloc(VNDR_IE_MAX_LEN + sizeof(vndr_ie_setbuf_t), GFP_KERNEL);
+
+	if (!ie_setbuf) {
+		printf("memory alloc failure\n");
+		return -1;
+	}
+
+	iecount = 1;
+	memcpy(&ie_setbuf->vndr_ie_buffer.iecount, &iecount, sizeof(int));
+
+	/* 
+	* The packet flag bit field indicates the packets that will
+	* contain this IE
+	*/
+    printf("@@@@ie_len = %d\n",ie_len);
+	for (i = 0; i < (ie_len); i++) {
+		printf(" %02X", *(buf+i));
+	}
+    printf("@@@@\n");
+	
+	memcpy(&ie_setbuf->vndr_ie_buffer.vndr_ie_list[0].pktflag, &pktflag, sizeof(uint32));
+
+//	memcpy(&(ie_setbuf->vndr_ie_buffer.vndr_ie_list[0].vndr_ie_data.len), buf, ie_len);
+	memcpy(&(ie_setbuf->vndr_ie_buffer.vndr_ie_list[0].vndr_ie_data), buf, ie_len);
+	return 0;
+}
+
+static int wl_android_add_vendr_ie(struct net_device *net, char *command, int total_len)
+{
+	//int num = bcm_atoi(command + strlen(CMD_SET_VENDR_IE) + 1);
+    int i = 0;
+    int ie_len = 0;
+    char tran_buf[32] = {0};
+    char *ptr_len, *ptr;
+    char buf[256]={0};
+
+    //printf("[Hugh] %s enter cmd=%s\n",__FUNCTION__,command +strlen(CMD_SET_VENDR_IE) + 1);
+    //printf("[Hugh] %s enter cmd=[%d]\n",__FUNCTION__,command[strlen(CMD_SET_VENDR_IE) + 1]);
+    //printf("[Hugh] %s enter num=[%d],total_len[%d]\n",__FUNCTION__,num,total_len);
+
+    ptr = command + strlen(CMD_SET_VENDR_IE) + 1;
+    ptr_len =  command + strlen(CMD_SET_VENDR_IE) + 1 + 2;
+    memcpy(tran_buf, ptr_len, 2);
+    ie_len = bcm_strtoul(tran_buf, NULL, 16);
+    //printf("[Hugh] %s le_len[%d]\n",__FUNCTION__,ie_len);
+    
+    for(i = 0 ; i < (ie_len + 2);i++)
+    {
+        memcpy(tran_buf, ptr, 2);
+        buf[i] = bcm_strtoul(tran_buf, NULL, 16);
+        //printf("buf[%d]=0x%2x\n",i,buf[i]);
+        ptr+=2;
+    }
+    
+
+#if 1
+/*
+	for (i = 0; i < (ie_len + 2); i++) {
+		printf(" %02X", *(buf+i));
+	}
+
+	printf("\n");
+*/
+
+	wldev_del_vendr_ie(net);
+
+	if (wl_android_create_wps_ie(buf , ie_len+2) != 0){
+	    printf("ERROR when do wl_android_create_wps_ie");
+			return -1;
+		}
+		
+	wldev_add_vendr_ie(net);
+		
+#endif	
+	return 0;
+}
+static int wl_android_del_vendr_ie(struct net_device *net, char *command, int total_len)
+{
+    //printf("[Hugh] %s enter cmd=%s\n",__FUNCTION__,command +strlen(CMD_DEL_VENDR_IE) + 1);
+    if(!ie_setbuf){
+        printf("Not ie to del\n");
+        return -1;
+    }
+    wldev_del_vendr_ie(net);
+     
+    return 0;
+}
+//Hugh 2012-04-05 start
+static int wl_android_scansuppress(struct net_device *net, char *command, int total_len)
+{
+	int enable = bcm_atoi(command + strlen(CMD_SCAN_SUPPRESS) + 1);
+    printf("[Hugh] %s enter cmd=%s\n",__FUNCTION__,command +strlen(CMD_SCAN_SUPPRESS) + 1);
+
+    wldev_set_scansuppress(net,enable);
+    return 0;
+}
+//Hugh 04-05 ----
+//Hugh 2012-03-22 ----
+
+#endif
+//BRCM APSTA END
+
 static int wl_android_get_link_speed(struct net_device *net, char *command, int total_len)
 {
 	int link_speed;
@@ -908,8 +1110,9 @@ extern char project_type[33];
 static int wl_android_wifi_call = 0;
 static struct mutex wl_wificall_mutex;
 static struct mutex wl_wifionoff_mutex;
-#ifdef BCM4329_LOW_POWER
 char wl_abdroid_gatewaybuf[8+1]; /* HTC_KlocWork */
+#ifdef BCM4329_LOW_POWER
+extern int LowPowerMode;
 extern bool hasDLNA;
 extern bool allowMulticast;
 extern int dhd_set_keepalive(int value);
@@ -1287,6 +1490,37 @@ static int wl_android_set_project(struct net_device *ndev, char *command, int to
 	return bytes_written;
 }
 
+#ifdef BCM4329_LOW_POWER
+static int wl_android_set_lowpowermode(struct net_device *ndev, char *command, int total_len)
+{
+	int bytes_written = 0;
+	char *s;
+	int set_val;
+
+	DHD_TRACE(("%s\n", __func__));
+	s =  command + strlen("SET_LOWPOWERMODE") + 1;
+	set_val = bcm_atoi(s);
+
+	switch (set_val) {
+	case 0:
+		printf("LowPowerMode: %d\n", set_val);
+		LowPowerMode = 0;
+		break;
+	case 1:
+		printf("LowPowerMode: %d\n", set_val);
+		LowPowerMode = 1;
+		break;
+	default:
+		DHD_ERROR(("%s: not support mode: %d\n", __func__, set_val));
+		break;
+	}
+
+	bytes_written = snprintf(command, total_len, "OK");
+
+	return bytes_written;
+}
+#endif
+
 static int wl_android_gateway_add(struct net_device *ndev, char *command, int total_len)
 {
 	int bytes_written = 0;
@@ -1303,8 +1537,12 @@ static int wl_android_gateway_add(struct net_device *ndev, char *command, int to
 
 	DHD_TRACE(("gatewaybuf: %s",wl_abdroid_gatewaybuf));
 
-	if (screen_off && !hasDLNA && !allowMulticast)
-		dhd_set_keepalive(1);
+#ifdef BCM4329_LOW_POWER
+	if (LowPowerMode == 1) {
+		if (screen_off && !hasDLNA && !allowMulticast)
+			dhd_set_keepalive(1);
+	}
+#endif
 
 	bytes_written = snprintf(command, total_len, "OK");
 
@@ -1499,6 +1737,7 @@ int wl_android_wifi_off(struct net_device *dev)
 	}
 
 	mutex_unlock(&wl_wifionoff_mutex);
+	bcm_mdelay(500);
 	return ret;
 }
 
@@ -1518,6 +1757,12 @@ static int wl_android_set_fwpath(struct net_device *net, char *command, int tota
 	return 0;
 }
 
+//BRCM WPSAP START
+#ifdef BRCM_WPSAP
+extern int wl_iw_send_priv_event(struct net_device *dev, char *flag);
+#endif /* BRCM_WPSAP */
+//BRCM WPSAP END
+
 int wl_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 {
 	int ret = 0;
@@ -1525,7 +1770,9 @@ int wl_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 	int bytes_written = 0;
 	android_wifi_priv_cmd priv_cmd;
 
-    struct dd_pkt_filter_s *data;
+#ifdef BCM4329_LOW_POWER
+	struct dd_pkt_filter_s *data;
+#endif
 
 	net_os_wake_lock(net);
 
@@ -1598,10 +1845,12 @@ int wl_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 	else if (strnicmp(command, CMD_RXFILTER_ADD, strlen(CMD_RXFILTER_ADD)) == 0) {
 		/*HTC_CSP_START*/
 #ifdef BCM4329_LOW_POWER
-		data = (struct dd_pkt_filter_s *)&command[32];
-		if ((data->id == ALLOW_IPV6_MULTICAST) || (data->id == ALLOW_IPV4_MULTICAST)) {
-			WL_TRACE(("RXFILTER-ADD MULTICAST filter\n"));
-			allowMulticast = false;
+		if (LowPowerMode == 1) {
+			data = (struct dd_pkt_filter_s *)&command[32];
+			if ((data->id == ALLOW_IPV6_MULTICAST) || (data->id == ALLOW_IPV4_MULTICAST)) {
+				WL_TRACE(("RXFILTER-ADD MULTICAST filter\n"));
+				allowMulticast = false;
+			}
 		}
 #endif
 		wl_android_set_pktfilter(net, (struct dd_pkt_filter_s *)&command[32]);
@@ -1616,10 +1865,12 @@ int wl_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 	else if (strnicmp(command, CMD_RXFILTER_REMOVE, strlen(CMD_RXFILTER_REMOVE)) == 0) {
 		/*HTC_CSP_START*/
 #ifdef BCM4329_LOW_POWER
-		data = (struct dd_pkt_filter_s *)&command[32];
-		if ((data->id == ALLOW_IPV6_MULTICAST) || (data->id == ALLOW_IPV4_MULTICAST)) {
-			WL_TRACE(("RXFILTER-REMOVE MULTICAST filter\n"));
-			allowMulticast = true;
+		if (LowPowerMode == 1) {
+			data = (struct dd_pkt_filter_s *)&command[32];
+			if ((data->id == ALLOW_IPV6_MULTICAST) || (data->id == ALLOW_IPV4_MULTICAST)) {
+				WL_TRACE(("RXFILTER-REMOVE MULTICAST filter\n"));
+				allowMulticast = true;
+			}
 		}
 #endif
 		wl_android_set_pktfilter(net, (struct dd_pkt_filter_s *)&command[32]);
@@ -1758,10 +2009,16 @@ int wl_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 	else if (strnicmp(command, CMD_SETPROJECT, strlen(CMD_SETPROJECT)) == 0) {
 		bytes_written = wl_android_set_project(net, command, priv_cmd.total_len);
 	}
+#ifdef BCM4329_LOW_POWER
+	else if (strnicmp(command, CMD_SETLOWPOWERMODE, strlen(CMD_SETLOWPOWERMODE)) == 0) {
+		bytes_written = wl_android_set_lowpowermode(net, command, priv_cmd.total_len);
+	}
+#endif
 	else if (strnicmp(command, CMD_GATEWAYADD, strlen(CMD_GATEWAYADD)) == 0) {
 		bytes_written = wl_android_gateway_add(net, command, priv_cmd.total_len);
 
-	} else if (strnicmp(command, CMD_GET_AUTO_CHANNEL, strlen(CMD_GET_AUTO_CHANNEL)) == 0) {
+	} 
+	else if (strnicmp(command, CMD_GET_AUTO_CHANNEL, strlen(CMD_GET_AUTO_CHANNEL)) == 0) {
 		int skip = strlen(CMD_GET_AUTO_CHANNEL) + 1;
 		block_ap_event = 1;
 		bytes_written = wl_android_auto_channel(net, command + skip,
@@ -1769,6 +2026,66 @@ int wl_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 		block_ap_event = 0;
 	}
 /* HTC_CSP_END */
+//BRCM APSTA WPSAP START
+#ifdef APSTA_CONCURRENT
+	else if (strnicmp(command, CMD_GET_AP_STATUS, strlen(CMD_GET_AP_STATUS)) == 0) {
+		bytes_written = wl_android_get_ap_status(net, command, priv_cmd.total_len);
+	} 
+	else if (strnicmp(command, CMD_SET_AP_CFG, strlen(CMD_SET_AP_CFG)) == 0) {
+		bytes_written = wl_android_set_ap_cfg(net, command, priv_cmd.total_len);
+	} 
+	else if (strnicmp(command, CMD_SET_APSTA, strlen(CMD_SET_APSTA)) == 0) {
+		bytes_written = wl_android_set_apsta(net, command, priv_cmd.total_len);
+	} 
+//Terry 2012-04-25
+	else if (strnicmp(command, CMD_SET_BCN_TIMEOUT, strlen(CMD_SET_BCN_TIMEOUT)) == 0) {
+		printk("[WLAN] %s CMD_SET_BCN_TIMEOUT\n",__FUNCTION__);
+		bytes_written = wl_android_set_bcn_timeout(net, command, priv_cmd.total_len);
+	} 
+//Terry 2012-04-25
+
+//Hugh 2012-03-22 ++++
+	else if (strnicmp(command, CMD_ADD_VENDR_IE, strlen(CMD_ADD_VENDR_IE)) == 0) {
+		bytes_written = wl_android_add_vendr_ie(net, command, priv_cmd.total_len);
+	}
+	else if (strnicmp(command, CMD_DEL_VENDR_IE, strlen(CMD_DEL_VENDR_IE)) == 0) {
+		bytes_written = wl_android_del_vendr_ie(net, command, priv_cmd.total_len);
+	}
+//Hugh 2012-04-05 ++++	
+	else if (strnicmp(command, CMD_SCAN_SUPPRESS, strlen(CMD_SCAN_SUPPRESS)) == 0) {
+		bytes_written = wl_android_scansuppress(net, command, priv_cmd.total_len);
+	} 
+//Hugh 2012-04-05 ----	
+	
+//Hugh  2012-03-22 ----
+#ifdef BRCM_WPSAP
+	else if (strnicmp(command, CMD_SET_WSEC, strlen(CMD_SET_WSEC)) == 0) {
+		printk("[WLAN] %s CMD_SET_WSEC\n",__FUNCTION__);
+		bytes_written = wldev_set_ap_sta_registra_wsec(net, command, priv_cmd.total_len);  
+	}
+	else if (strnicmp(command, CMD_WPS_RESULT, strlen(CMD_WPS_RESULT)) == 0) {
+		unsigned char result;
+		result = *(command + PROFILE_OFFSET);
+		printk("[WLAN] %s WPS_RESULT result = %d\n",__FUNCTION__,result);
+		if(result == 1)
+			wl_iw_send_priv_event(net, "WPS_SUCCESSFUL"); 
+		else
+			wl_iw_send_priv_event(net, "WPS_FAIL"); 
+	}
+//L2_PROFILE_EXCHANGE+
+        else if (strnicmp(command, "L2PE_RESULT", strlen("L2PE_RESULT")) == 0) {
+		unsigned char result;
+		result = *(command + PROFILE_OFFSET);
+		DHD_ERROR(("%s L2PE_RESULT result = %d\n", __FUNCTION__, result));
+		if(result == 1)
+			wl_iw_send_priv_event(net, "L2PE_SUCCESSFUL");
+		else
+			wl_iw_send_priv_event(net, "L2PE_FAIL");
+	}
+//L2_PROFILE_EXCHANGE-
+#endif /* BRCM_WPSAP */
+#endif /* APSTA_CONCURRENT */
+//BRCM APSTA WPSAP END
 	else {
 		DHD_ERROR(("%s: Unknown PRIVATE command %s - ignored\n", __FUNCTION__, command));
 		snprintf(command, 3, "OK");
