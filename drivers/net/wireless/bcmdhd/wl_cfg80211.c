@@ -123,7 +123,7 @@ u32 wl_dbg_level = WL_DBG_ERR ;
  */
 
 #ifdef CONFIG_BCMDHD_P2P_INTERFACE
-#define ENABLE_P2P_INTERFACE	0
+#define ENABLE_P2P_INTERFACE	1
 #else
 #define ENABLE_P2P_INTERFACE	0
 #endif
