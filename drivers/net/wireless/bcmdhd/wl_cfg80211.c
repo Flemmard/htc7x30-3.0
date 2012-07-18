@@ -121,7 +121,12 @@ u32 wl_dbg_level = WL_DBG_ERR ;
 /* Set this to 1 to use a seperate interface (p2p0)
  *  for p2p operations.
  */
+
+#ifdef CONFIG_BCMDHD_P2P_INTERFACE
 #define ENABLE_P2P_INTERFACE	0
+#else
+#define ENABLE_P2P_INTERFACE	0
+#endif
 
 /* This is to override regulatory domains defined in cfg80211 module (reg.c)
  * By default world regulatory domain defined in reg.c puts the flags NL80211_RRF_PASSIVE_SCAN
