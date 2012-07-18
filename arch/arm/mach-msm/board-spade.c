@@ -568,10 +568,10 @@ static ssize_t spade_virtual_keys_show(struct kobject *kobj,
 			struct kobj_attribute *attr, char *buf)
 {
 	return sprintf(buf,
-		__stringify(EV_KEY) ":" __stringify(KEY_HOME)	":65:845:80:50"
-		":" __stringify(EV_KEY) ":" __stringify(KEY_MENU)	":180:845:83:50"
-		":" __stringify(EV_KEY) ":" __stringify(KEY_BACK)	":310:845:88:50"
-		":" __stringify(EV_KEY) ":" __stringify(KEY_SEARCH) ":445:845:91:50"
+		__stringify(EV_KEY) ":" __stringify(KEY_HOME)	    ":75:840:70:70"
+		":" __stringify(EV_KEY) ":" __stringify(KEY_MENU)   ":190:840:90:70"
+		":" __stringify(EV_KEY) ":" __stringify(KEY_BACK)   ":295:840:90:70"
+		":" __stringify(EV_KEY) ":" __stringify(KEY_SEARCH) ":410:840:75:70"
 		"\n");
 }
 
