@@ -103,7 +103,6 @@ static struct platform_device spade_keypad_input_device = {
 	},
 };
 
-#ifdef CONFIG_INPUT_KEYRESET
 /*
 static int spade_reset_keys_up[] = {
 	KEY_VOLUMEUP,
@@ -125,16 +124,14 @@ struct platform_device spade_reset_keys_device = {
 	.name = KEYRESET_NAME,
 	.dev.platform_data = &spade_reset_keys_pdata,
 };
-#endif
 
 int __init spade_init_keypad(void)
 {
 	printk(KERN_DEBUG "%s\n",	__func__);
 
-#ifdef CONFIG_INPUT_KEYRESET
 	if (platform_device_register(&spade_reset_keys_device))
 		printk(KERN_WARNING "%s: register reset key fail\n", __func__);
-#endif
+
 	spade_keypad_data.name = "spade-keypad-v0";
 	printk("direct key:spade-keypad-v0\n");
 
