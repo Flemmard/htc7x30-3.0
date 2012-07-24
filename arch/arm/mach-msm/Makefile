@@ -164,6 +164,7 @@ obj-$(CONFIG_ARCH_MSM7X27A) += dal_axi.o
 obj-$(CONFIG_MSM_ADSP) += qdsp5/
 #obj-$(CONFIG_MSM7KV2_AUDIO) += qdsp5v2/
 obj-$(CONFIG_MSM7KV2_AUDIO) += qdsp5v2_2x/
+obj-$(CONFIG_MSM7KV2_1X_AUDIO) += qdsp5v2_1x/
 obj-$(CONFIG_MSM7KV2_AUDIO) += htc_acoustic_7x30.o htc_acdb_7x30.o
 
 obj-$(CONFIG_MSM_QDSP6) += qdsp6/
@@ -476,7 +477,7 @@ obj-$(CONFIG_MACH_VISION) += display/vision-panel.o
 obj-$(CONFIG_MACH_VISION) += htc_bdaddress.o
 obj-$(CONFIG_MACH_SAGA) += board-saga.o
 obj-$(CONFIG_MACH_SAGA) += board-saga-keypad.o
-obj-$(CONFIG_MACH_SAGA) += board-saga-mmc.o board-saga-wifi.o
+obj-$(CONFIG_MACH_SAGA) += board-saga-mmc.o board-saga-wifi.o board-saga-rfkill.o
 obj-$(CONFIG_MACH_SAGA) += display/saga-panel.o board-saga-audio.o
 #obj-$(CONFIG_MACH_SAGA) += htc_sleep_clk.o htc_fast_clk_7k.o
 obj-$(CONFIG_MACH_SAGA) += htc_bdaddress.o

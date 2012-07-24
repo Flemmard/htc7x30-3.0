@@ -60,14 +60,22 @@
 #endif
 #include <mach/rpc_hsusb.h>
 #include <mach/msm_spi.h>
-#include <mach/qdsp5v2_2x/msm_lpa.h>
 #include <mach/dma.h>
 #include <linux/android_pmem.h>
 #include <linux/input/msm_ts.h>
 #include <mach/rpc_pmapp.h>
+#ifdef CONFIG_MSM7KV2_AUDIO
+#include <mach/qdsp5v2_2x/msm_lpa.h>
 #include <mach/qdsp5v2_2x/aux_pcm.h>
 #include <mach/qdsp5v2_2x/mi2s.h>
 #include <mach/qdsp5v2_2x/audio_dev_ctl.h>
+#endif
+#ifdef CONFIG_MSM7KV2_1X_AUDIO
+#include <mach/qdsp5v2_1x/msm_lpa.h>
+#include <mach/qdsp5v2_1x/aux_pcm.h>
+#include <mach/qdsp5v2_1x/mi2s.h>
+#include <mach/qdsp5v2_1x/audio_dev_ctl.h>
+#endif
 #include <mach/htc_battery.h>
 #include <linux/tps65200.h>
 #include <mach/rpc_server_handset.h>

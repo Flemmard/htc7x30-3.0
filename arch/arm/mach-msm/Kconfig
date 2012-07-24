@@ -1673,6 +1673,14 @@ config MSM7KV2_AUDIO
 	  Enables QDSP5V2-based audio drivers for audio playbacks and
 	  voice call.
 
+config MSM7KV2_1X_AUDIO
+	bool "MSM7K v2 1x audio"
+	depends on (ARCH_MSM7X30 && ANDROID_PMEM)
+	default y
+	help
+	  Enables QDSP5V2-based audio drivers for audio playbacks and
+	  voice call, works with old 7x30 devices.
+
 config MSM_ADSP_REPORT_EVENTS
 	bool "Report modem events from the DSP"
 	default y
