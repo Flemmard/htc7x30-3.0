@@ -25,7 +25,7 @@ config SND_MSM_SOC_MSM7KV2
 
 config SND_MSM7KV2_SOC
 	tristate "SoC Audio for the MSM7KV2 chip"
-	depends on ARCH_MSM7X30 && SND_SOC && MSM7KV2_AUDIO
+	depends on ARCH_MSM7X30 && SND_SOC && (MSM7KV2_AUDIO || MSM7KV2_1X_AUDIO)
 	select SND_MSM_SOC_MSM7KV2
 	select SND_MSM7KV2_DAI_SOC
 	default n
