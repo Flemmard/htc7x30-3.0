@@ -757,10 +757,8 @@ static int msmfb_overlay_get(struct fb_info *info, void __user *p)
 	ret = mdp->overlay_get(mdp, info, &req);
 
 	if (ret) {
-#if 0
 		PR_DISP_ERR("%s: ioctl failed \n",
 			__func__);
-#endif
 		return ret;
 	}
 	if (copy_to_user(p, &req, sizeof(req))) {
@@ -791,7 +789,7 @@ static int msmfb_overlay_set(struct fb_info *info, void __user *p)
 	/* Used the following mutex to make sure that overlay play/set will not do at the same time */
 	/* It assume overlay play can complete in fixed time */
 	mutex_lock(&overlay_ioctl_mutex);
-	ret = 0; //mdp->overlay_set(mdp, info, &req);
+	ret = mdp->overlay_set(mdp, info, &req);
 	mutex_unlock(&overlay_ioctl_mutex);
 
 	if (sem_owned == 0)
@@ -827,7 +825,7 @@ static int msmfb_overlay_unset(struct fb_info *info, unsigned long *argp)
 	/* Otherwise we met the mdp4_overlay_play()->mdp4_overlay_vg_setup() which try to access the pipe free
 	in mdp4_overlay_unset()->mdp4_overlay_*/
 	mutex_lock(&overlay_ioctl_mutex);
-	ret = 0; //mdp->overlay_unset(mdp, info, ndx);
+	ret = mdp->overlay_unset(mdp, info, ndx);
 	mutex_unlock(&overlay_ioctl_mutex);
 
 	return ret;
@@ -848,7 +846,7 @@ static int msmfb_overlay_play(struct fb_info *info, unsigned long *argp)
 
 	/* Used the following mutex to make sure that overlay play/set will not do at the same time */
 	mutex_lock(&overlay_ioctl_mutex);
-	ret = 0; //mdp->overlay_play(mdp, info, &req, &p_src_file);
+	ret = mdp->overlay_play(mdp, info, &req, &p_src_file);
 	mutex_unlock(&overlay_ioctl_mutex);
 
 	if (p_src_file)
