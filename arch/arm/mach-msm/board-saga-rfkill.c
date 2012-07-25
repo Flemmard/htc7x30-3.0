@@ -23,7 +23,6 @@
 #include <linux/gpio.h>
 #include <asm/mach-types.h>
 
-#include "gpio_chip.h"
 #include "proc_comm.h"
 #include "board-saga.h"
 
@@ -222,37 +221,37 @@ static void saga_config_bt_init(void)
 	mdelay(5);
 
 	/* BT_SHUTDOWN_N */
-	gpio_configure(SAGA_GPIO_BT_SHUTDOWN_N,
-				GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_HIGH);
+	gpio_set_value(SAGA_GPIO_BT_SHUTDOWN_N,
+				1);
 	mdelay(2);
 	/* BT_RESET_N */
-	gpio_configure(SAGA_GPIO_BT_RESET_N,
-				GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_HIGH);
+	gpio_set_value(SAGA_GPIO_BT_RESET_N,
+				1);
 	mdelay(15);
 
 	/* BT_RESET_N */
-	gpio_configure(SAGA_GPIO_BT_RESET_N,
-				GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_LOW);
+	gpio_set_value(SAGA_GPIO_BT_RESET_N,
+				0);
 	mdelay(2);
 	/* BT_SHUTDOWN_N */
-	gpio_configure(SAGA_GPIO_BT_SHUTDOWN_N,
-				GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_LOW);
+	gpio_set_value(SAGA_GPIO_BT_SHUTDOWN_N,
+				0);
 	mdelay(2);
 
 	/* BT_RTS */
-	gpio_configure(SAGA_GPIO_BT_UART1_RTS,
-				GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_HIGH);
+	gpio_set_value(SAGA_GPIO_BT_UART1_RTS,
+				1);
 	/* BT_CTS */
 
 	/* BT_RX */
 
 	/* BT_TX */
-	gpio_configure(SAGA_GPIO_BT_UART1_TX,
-				GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_LOW);
+	gpio_set_value(SAGA_GPIO_BT_UART1_TX,
+				0);
 
 	/* BT_CHIP_WAKE */
-	gpio_configure(SAGA_GPIO_BT_CHIP_WAKE,
-				GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_LOW);
+	gpio_set_value(SAGA_GPIO_BT_CHIP_WAKE,
+				0);
 
 }
 
@@ -267,13 +266,13 @@ static void saga_config_bt_on(void)
 	mdelay(5);
 
 	/* BT_SHUTDOWN_N */
-	gpio_configure(SAGA_GPIO_BT_SHUTDOWN_N,
-				GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_HIGH);
+	gpio_set_value(SAGA_GPIO_BT_SHUTDOWN_N,
+				1);
 	mdelay(2);
 
 	/* BT_RESET_N */
-	gpio_configure(SAGA_GPIO_BT_RESET_N,
-				GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_HIGH);
+	gpio_set_value(SAGA_GPIO_BT_RESET_N,
+				1);
 	mdelay(2);
 
 }
@@ -281,13 +280,13 @@ static void saga_config_bt_on(void)
 static void saga_config_bt_off(void)
 {
 	/* BT_RESET_N */
-	gpio_configure(SAGA_GPIO_BT_RESET_N,
-				GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_LOW);
+	gpio_set_value(SAGA_GPIO_BT_RESET_N,
+				0);
 	mdelay(2);
 
 	/* BT_SHUTDOWN_N */
-	gpio_configure(SAGA_GPIO_BT_SHUTDOWN_N,
-				GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_LOW);
+	gpio_set_value(SAGA_GPIO_BT_SHUTDOWN_N,
+				0);
 	mdelay(2);
 
 	/* set bt off configuration*/
@@ -296,21 +295,21 @@ static void saga_config_bt_off(void)
 	mdelay(5);
 
 	/* BT_RTS */
-	gpio_configure(SAGA_GPIO_BT_UART1_RTS,
-				GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_LOW);
+	gpio_set_value(SAGA_GPIO_BT_UART1_RTS,
+				0);
 	/* BT_CTS */
 
 	/* BT_RX */
 
 	/* BT_TX */
-	gpio_configure(SAGA_GPIO_BT_UART1_TX,
-				GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_LOW);
+	gpio_set_value(SAGA_GPIO_BT_UART1_TX,
+				0);
 
 	/* BT_HOST_WAKE */
 
 	/* BT_CHIP_WAKE */
-	gpio_configure(SAGA_GPIO_BT_CHIP_WAKE,
-				GPIOF_DRIVE_OUTPUT | GPIOF_OUTPUT_LOW);
+	gpio_set_value(SAGA_GPIO_BT_CHIP_WAKE,
+				0);
 
 	saga_wifi_bt_sleep_clk_ctl(CLK_OFF, ID_BT);
 	mdelay(2);
