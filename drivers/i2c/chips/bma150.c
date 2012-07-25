@@ -184,7 +184,7 @@ static int bma_release(struct inode *inode, struct file *file)
 	return 0;
 }
 
-static int bma_ioctl(struct inode *inode, struct file *file, unsigned int cmd,
+static int bma_ioctl(struct file *file, unsigned int cmd,
 	   unsigned long arg)
 {
 
