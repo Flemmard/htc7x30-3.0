@@ -31,7 +31,6 @@
 #include <linux/cm3628.h>
 #include <linux/akm8975.h>
 #include <linux/bma150.h>
-#include <linux/isl29028.h>
 #include <linux/power_supply.h>
 #include <linux/leds-pm8058.h>
 #include <linux/msm_adc.h>
@@ -56,15 +55,23 @@
 #endif
 #include <mach/rpc_hsusb.h>
 #include <mach/msm_spi.h>
-#include <mach/qdsp5v2_2x/msm_lpa.h>
 #include <mach/dma.h>
 #include <linux/android_pmem.h>
 #include <linux/input/msm_ts.h>
 //#include <mach/pmic.h>
 #include <mach/rpc_pmapp.h>
+#ifdef CONFIG_MSM7KV2_AUDIO
+#include <mach/qdsp5v2_2x/msm_lpa.h>
 #include <mach/qdsp5v2_2x/aux_pcm.h>
 #include <mach/qdsp5v2_2x/mi2s.h>
 #include <mach/qdsp5v2_2x/audio_dev_ctl.h>
+#endif
+#ifdef CONFIG_MSM7KV2_1X_AUDIO
+#include <mach/qdsp5v2_1x/msm_lpa.h>
+#include <mach/qdsp5v2_1x/aux_pcm.h>
+#include <mach/qdsp5v2_1x/mi2s.h>
+#include <mach/qdsp5v2_1x/audio_dev_ctl.h>
+#endif
 #include <mach/htc_battery.h>
 #include <linux/ds2746_battery.h>
 #include <linux/tps65200.h>
@@ -527,39 +534,6 @@ static struct akm8975_platform_data compass_platform_data_XC = {
 static struct bma150_platform_data gsensor_platform_data = {
 	.intr = SAGA_GPIO_GSENSOR_INT_N,
 	.chip_layout = 1,
-};
-
-static int isl29028_power(int pwr_device, uint8_t enable)
-{
-	return 0;
-}
-
-
-static uint8_t isl29028_mapping_table[] = {0x0, 0x3, 0x6, 0x9, 0xC,
-			0xF, 0x12, 0x15, 0x18, 0x1B,
-			0x1E, 0x21, 0x24, 0x27, 0x2A,
-			0x2D, 0x30, 0x33, 0x36, 0x39,
-			0x3C, 0x3F, 0x43, 0x47, 0x4B,
-			0x4F, 0x53, 0x57, 0x5B, 0x5F,
-			0x63, 0x67, 0x6B, 0x70, 0x75,
-			0x7A, 0x7F, 0x84, 0x89, 0x8E,
-			0x93, 0x98, 0x9D, 0xA2, 0xA8,
-			0xAE, 0xB4, 0xBA, 0xC0, 0xC6,
-			0xCC, 0xD3, 0xDA, 0xE1, 0xE8,
-			0xEF, 0xF6, 0xFF};
-
-static struct isl29028_platform_data isl29028_pdata = {
-	.intr = SAGA_GPIO_PROXIMITY_INT_N,
-	.levels = { 7, 59, 137, 1171, 1559, 1817,
-			2076, 2335, 2593, 0xFFF},
-	.golden_adc = 0x2F8,
-	.power = isl29028_power,
-	.lt = 0x45,
-	.ht = 0x55,
-	.debounce = 1,
-	.mapping_table = isl29028_mapping_table,
-	.mapping_size = ARRAY_SIZE(isl29028_mapping_table),
-	.enable_polling_ignore = 1,
 };
 
 static struct tps65200_platform_data tps65200_data = {
@@ -1617,7 +1591,7 @@ static struct htc_battery_platform_data htc_battery_pdev_data = {
 	.guage_driver = GUAGE_MODEM,
 	.charger = SWITCH_CHARGER_TPS65200,
 	.m2a_cable_detect = 1,
-        //	.int_data.chg_int = MSM_GPIO_TO_INT(PM8058_GPIO_PM_TO_SYS(SAGA_GPIO_CHG_INT)),
+        //.int_data.chg_int = MSM_GPIO_TO_INT(PM8058_GPIO_PM_TO_SYS(SAGA_GPIO_CHG_INT)),
 };
 
 static struct platform_device htc_battery_pdev = {
@@ -1627,93 +1601,6 @@ static struct platform_device htc_battery_pdev = {
 		.platform_data = &htc_battery_pdev_data,
 	},
 };
-
-#ifdef CONFIG_BATTERY_DS2746
-static int get_thermal_id(void)
-{
-	return (system_rev == XD? THERMAL_1000_100_4360: THERMAL_300_100_4360);
-}
-
-static int get_battery_id(void)
-{
-	return BATTERY_ID_SAMSUNG_1230MAH;
-}
-
-/* battery parameters */
-UINT32 m_parameter_unknown_1280mah[] = {
-	10000, 4100, 5500, 3839, 2400, 3759,
-	400, 3667, 0, 3397,
-};
-UINT32 m_parameter_samsung_1230mah[] = {
-	/* capacity (in 0.01%) -> voltage (in mV)*/
-	10000, 4135, 7500, 3960, 4700, 3800, 1700, 3727,
-	900, 3674, 300, 3640, 0, 3420,
-};
-
-static UINT32* m_param_tbl[] = {
-	m_parameter_unknown_1280mah,
-	m_parameter_samsung_1230mah,
-};
-
-static UINT32 fl_25[] = {1280, 1230};
-static UINT32 pd_m_coef[] = {24, 30};
-static UINT32 pd_m_resl[] = {100, 100};
-static UINT32 pd_t_coef[] = {140, 250};
-static INT32 padc[] = {200, 200};
-static INT32 pw[] = {5, 5};
-
-static UINT32* pd_m_coef_tbl[] = {pd_m_coef,};
-static UINT32* pd_m_resl_tbl[] = {pd_m_resl,};
-static UINT32 capacity_deduction_tbl_01p[] = {0,};
-
-static struct battery_parameter saga_battery_parameter = {
-	.fl_25 = fl_25,
-	.pd_m_coef_tbl = pd_m_coef_tbl,
-	.pd_m_coef_tbl_boot = pd_m_coef_tbl,
-	.pd_m_resl_tbl = pd_m_resl_tbl,
-	.pd_m_resl_tbl_boot = pd_m_resl_tbl,
-	.pd_t_coef = pd_t_coef,
-	.padc = padc,
-	.pw = pw,
-	.capacity_deduction_tbl_01p = capacity_deduction_tbl_01p,
-	.id_tbl = NULL,
-	.temp_index_tbl = NULL,
-	.m_param_tbl = m_param_tbl,
-	.m_param_tbl_size = sizeof(m_param_tbl)/sizeof(UINT32*),
-};
-
-static ds2746_platform_data ds2746_pdev_data = {
-	.func_get_thermal_id = get_thermal_id,
-	.func_get_battery_id = get_battery_id,
-	.func_poweralg_config_init = NULL,	/* by default */
-	.func_update_charging_protect_flag = NULL,	/* by default */
-	.r2_kohm = 0,	/* use get_battery_id, doesn't need this */
-	.batt_param = &saga_battery_parameter,
-};
-
-static struct platform_device ds2746_battery_pdev = {
-	.name = "ds2746-battery",
-	.id = -1,
-	.dev = {
-		.platform_data = &ds2746_pdev_data,
-	},
-};
-#endif
-
-static int isl29028_power(int pwr_device, uint8_t enable);
-
-#ifdef CONFIG_SUPPORT_DQ_BATTERY
-static int __init check_dq_setup(char *str)
-{
-	if (!strcmp(str, "PASS"))
-		tps65200_data.dq_result = 1;
-	else
-		tps65200_data.dq_result = 0;
-
-	return 1;
-}
-__setup("androidboot.dq=", check_dq_setup);
-#endif
 
 #ifdef CONFIG_SERIAL_MSM_HS
 static struct msm_serial_hs_platform_data msm_uart_dm1_pdata = {
@@ -1791,9 +1678,9 @@ static struct platform_device msm_vpe_device = {
 
 #ifdef CONFIG_MSM_CAMERA
 static struct i2c_board_info msm_camera_boardinfo[] __initdata = {
-#ifdef CONFIG_MT8V113
+#ifdef CONFIG_MT9V113
 	{
-		I2C_BOARD_INFO("mt8v113", 0x3C),
+		I2C_BOARD_INFO("mt9v113", 0x3C),
 	},
 #endif
 #ifdef CONFIG_S5K4E1GX
@@ -1986,51 +1873,80 @@ static struct camera_flash_cfg msm_camera_sensor_flash_cfg = {
 	.low_cap_limit		= 10,
 };
 
-#ifdef CONFIG_OV8810
-static struct msm_camera_sensor_info msm_camera_sensor_ov8810_data = {
-	.sensor_name = "ov8810",
-	.sensor_reset = SAGA_CAM_RST,
-	.sensor_pwd = SAGA_CAM_PWD,
+#ifdef CONFIG_S5K4E1GX
+static void saga_s5k4e1gx_clk_switch(void){
+	int rc = 0;
+	pr_info("doing clk switch (saga)(s5k4e1gx)\n");
+	rc = gpio_request(SAGA_CLK_SEL, "s5k4e1gx");
+	if (rc < 0)
+		pr_err("GPIO (%d) request fail\n", SAGA_CLK_SEL);
+	else
+		gpio_direction_output(SAGA_CLK_SEL, 0);
+	gpio_free(SAGA_CLK_SEL);
+
+	return;
+}
+
+static struct msm_camera_sensor_info msm_camera_sensor_s5k4e1gx_data = {
+	.sensor_name    = "s5k4e1gx",
+	.sensor_reset = SAGA_CAM1_PD,
+	.vcm_pwd     = SAGA_VCM_PD,
+	.camera_clk_switch	= saga_s5k4e1gx_clk_switch,
 	.camera_power_on = saga_sensor_vreg_on,
 	.camera_power_off = saga_sensor_vreg_off,
-	.camera_main_get_probe = saga_camera_main_get_probe,
-	.camera_main_set_probe = saga_camera_main_set_probe,
-	.pdata = &msm_camera_device_data,
-	.flash_type = MSM_CAMERA_FLASH_LED,
-	.resource = msm_camera_resources,
-	.num_resources = ARRAY_SIZE(msm_camera_resources),
-	.flash_cfg = &msm_camera_sensor_flash_cfg,
+	.pdata          = &msm_camera_device_data,
+	.flash_type     = MSM_CAMERA_FLASH_LED,
+	.resource       = msm_camera_resources,
+	.num_resources  = ARRAY_SIZE(msm_camera_resources),
+	.flash_cfg	= &msm_camera_sensor_flash_cfg,
+        //	.sensor_lc_disable = true, /* disable sensor lens correction */
+	.cam_select_pin = SAGA_CLK_SEL,
+	.csi_if = 1,
+        //	.zero_shutter_mode = true, /* for doing zero shutter lag on MIPI */
 };
 
-static struct platform_device msm_camera_sensor_ov8810 = {
-	.name      = "msm_camera_ov8810",
+static struct platform_device msm_camera_sensor_s5k4e1gx = {
+	.name      = "msm_camera_s5k4e1gx",
 	.dev       = {
-		.platform_data = &msm_camera_sensor_ov8810_data,
+		.platform_data = &msm_camera_sensor_s5k4e1gx_data,
 	},
 };
 #endif
-#ifdef CONFIG_S5K3H1GX
-static struct msm_camera_sensor_info msm_camera_sensor_s5k3h1gx_data = {
-	.sensor_name = "s5k3h1gx",
-	.vcm_pwd = SAGA_CAM_RST,
-	.sensor_pwd = SAGA_CAM_PWD,
+
+#ifdef CONFIG_MT9V113
+static void saga_mt9v113_clk_switch(void){
+	int rc = 0;
+	pr_info("doing clk switch (saga)(mt9v113)\n");
+	rc = gpio_request(SAGA_CLK_SEL, "mt9v113");
+	if (rc < 0)
+		pr_err("GPIO (%d) request fail\n", SAGA_CLK_SEL);
+	else
+		gpio_direction_output(SAGA_CLK_SEL, 1);
+	gpio_free(SAGA_CLK_SEL);
+
+	return;
+}
+
+static struct msm_camera_sensor_info msm_camera_sensor_mt9v113_data = {
+	.sensor_name	= "mt9v113",
+	.sensor_reset	= SAGA_CAM2_RSTz,
+	.vcm_pwd		= SAGA_CAM2_PD,
+	.camera_clk_switch	= saga_mt9v113_clk_switch,
 	.camera_power_on = saga_sensor_vreg_on,
 	.camera_power_off = saga_sensor_vreg_off,
-	.camera_main_get_probe = saga_camera_main_get_probe,
-	.camera_main_set_probe = saga_camera_main_set_probe,
-	.pdata = &msm_camera_device_data,
-	.flash_type = MSM_CAMERA_FLASH_LED,
+	.pdata		= &msm_camera_device_data,
+	.flash_type     = MSM_CAMERA_FLASH_NONE,
 	.resource = msm_camera_resources,
 	.num_resources = ARRAY_SIZE(msm_camera_resources),
-	.flash_cfg = &msm_camera_sensor_flash_cfg,
-	.csi_if = 0,
+	.cam_select_pin = SAGA_CLK_SEL,
+	.mirror_mode = true, /* for sensor upside down */
 };
 
-static struct platform_device msm_camera_sensor_s5k3h1gx = {
-  .name = "msm_camera_s5k3h1gx",
-  .dev = {
-    .platform_data = &msm_camera_sensor_s5k3h1gx_data,
-  },
+static struct platform_device msm_camera_sensor_mt9v113 = {
+	.name	   = "msm_camera_mt9v113",
+	.dev	    = {
+		.platform_data = &msm_camera_sensor_mt9v113_data,
+	},
 };
 #endif
 #endif /*CONFIG_MSM_CAMERA*/
@@ -2792,11 +2708,11 @@ static struct platform_device *devices[] __initdata = {
         &msm_lpa_device,
         &msm_aux_pcm_device,
 #endif
-#ifdef CONFIG_OV8810
-        &msm_camera_sensor_ov8810,
+#ifdef CONFIG_MT9V113
+        &msm_camera_sensor_mt9v113,
 #endif
-#ifdef CONFIG_S5K3H1GX
-        &msm_camera_sensor_s5k3h1gx,
+#ifdef CONFIG_S5K3E1GX
+        &msm_camera_sensor_s5k4e1gx,
 #endif
 
         &msm_device_adspdec,
