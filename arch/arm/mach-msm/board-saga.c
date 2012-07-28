@@ -502,17 +502,51 @@ static struct htc_headset_mgr_platform_data htc_headset_mgr_data = {
 
 
 static struct pm8058_led_config pm_led_config[] = {
-  {
-    .name = "keyboard-backlight",
-    .type = PM8058_LED_CURRENT,
-    .bank = 3,
-    .out_current = 100,
-  },
+	{
+		.name = "green",
+		.type = PM8058_LED_RGB,
+		.bank = 0,
+		.pwm_size = 9,
+		.clk = PM_PWM_CLK_32KHZ,
+		.pre_div = PM_PWM_PREDIVIDE_2,
+		.pre_div_exp = 1,
+		.pwm_value = 511,
+	},
+	{
+		.name = "amber",
+		.type = PM8058_LED_RGB,
+		.bank = 1,
+		.pwm_size = 9,
+		.clk = PM_PWM_CLK_32KHZ,
+		.pre_div = PM_PWM_PREDIVIDE_2,
+		.pre_div_exp = 1,
+		.pwm_value = 511,
+	},
+	{
+		.name = "button-backlight",
+		.type = PM8058_LED_DRVX,
+		.bank = 6,
+		.flags = PM8058_LED_LTU_EN,
+		.period_us = USEC_PER_SEC / 1000,
+		.start_index = 0,
+		.duites_size = 8,
+		.duty_time_ms = 32,
+		.lut_flag = PM_PWM_LUT_RAMP_UP | PM_PWM_LUT_PAUSE_HI_EN,
+		.out_current = 8,
+	},
 };
 
 static struct pm8058_led_platform_data pm8058_leds_data = {
-  .led_config = pm_led_config,
-  .num_leds = ARRAY_SIZE(pm_led_config),
+	.led_config = pm_led_config,
+	.num_leds = ARRAY_SIZE(pm_led_config),
+	.duties = {0, 15, 30, 45, 60, 75, 90, 100,
+		   100, 90, 75, 60, 45, 30, 15, 0,
+		   0, 0, 0, 0, 0, 0, 0, 0,
+		   0, 0, 0, 0, 0, 0, 0, 0,
+		   0, 0, 0, 0, 0, 0, 0, 0,
+		   0, 0, 0, 0, 0, 0, 0, 0,
+		   0, 0, 0, 0, 0, 0, 0, 0,
+		   0, 0, 0, 0, 0, 0, 0, 0},
 };
 
 static struct platform_device pm8058_leds = {
@@ -614,6 +648,28 @@ static int pm8058_gpios_init(void)
 		.inv_int_pol    = 0,
 	};
 
+	static struct pm_gpio green_led = {
+		.direction      = PM_GPIO_DIR_OUT,
+		.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
+		.output_value   = 1,
+		.pull           = PM_GPIO_PULL_NO,
+		.vin_sel        = PM8058_GPIO_VIN_L5,
+		.out_strength   = PM_GPIO_STRENGTH_HIGH,
+		.function       = PM_GPIO_FUNC_2,
+		.inv_int_pol    = 0,
+	};
+
+	static struct pm_gpio amber_led = {
+		.direction      = PM_GPIO_DIR_OUT,
+		.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
+		.output_value   = 1,
+		.pull           = PM_GPIO_PULL_NO,
+		.vin_sel        = PM8058_GPIO_VIN_L5,
+		.out_strength   = PM_GPIO_STRENGTH_HIGH,
+		.function       = PM_GPIO_FUNC_2,
+		.inv_int_pol    = 0,
+	};
+
 	static struct pm_gpio sdmc_cd_n = {
 		.direction      = PM_GPIO_DIR_IN,
 		.output_buffer  = 0,
@@ -636,6 +692,28 @@ static int pm8058_gpios_init(void)
 		.inv_int_pol    = 0,
 	};
 
+	static struct pm_gpio spk_en = {
+		.direction      = PM_GPIO_DIR_OUT,
+		.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
+		.output_value   = 1,
+		.pull           = PM_GPIO_PULL_NO,
+		.vin_sel        = PM8058_GPIO_VIN_S3,
+		.out_strength   = PM_GPIO_STRENGTH_HIGH,
+		.function       = PM_GPIO_FUNC_NORMAL,
+		.inv_int_pol    = 0,
+	};
+
+	static struct pm_gpio ps_shdn = {
+		.direction      = PM_GPIO_DIR_OUT,
+		.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
+		.output_value   = 0,
+		.pull           = PM_GPIO_PULL_NO,
+		.vin_sel        = PM8058_GPIO_VIN_L5,
+		.out_strength   = PM_GPIO_STRENGTH_HIGH,
+		.function       = PM_GPIO_FUNC_NORMAL,
+		.inv_int_pol    = 0,
+	};
+
 	rc = pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(SAGA_TP_RSTz), &tp_rstz);
 	if (rc) {
 		printk(KERN_ERR "%s TP_RSTz config failed\n", __func__);
@@ -649,7 +727,7 @@ static int pm8058_gpios_init(void)
 		return rc;
 	} else
 	  printk(KERN_ERR "%s SLIDING_INTz config ok\n", __func__);
-#if 0
+
 	rc = pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(SAGA_VOL_UP), &vol_up);
 	if (rc) {
 		printk(KERN_ERR "%s VOL_UP config failed\n", __func__);
@@ -662,13 +740,41 @@ static int pm8058_gpios_init(void)
 		return rc;
 	} else
 	  printk(KERN_ERR "%s VOL_DN config ok\n", __func__);
-#endif
+
+	rc = pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(SAGA_GREEN_LED), &green_led);
+	if (rc) {
+		printk(KERN_ERR "%s GREEN_LED config failed\n", __func__);
+		return rc;
+	} else
+	  printk(KERN_ERR "%s GREEN_LED config ok\n", __func__);
+
+	rc = pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(SAGA_AMBER_LED), &amber_led);
+	if (rc) {
+		printk(KERN_ERR "%s AMBER_LED config failed\n", __func__);
+		return rc;
+	} else
+	  printk(KERN_ERR "%s AMBER_LED config ok\n", __func__);
+
 	rc = pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(SAGA_AUD_HP_DETz), &headset);
 	if (rc) {
 		printk(KERN_ERR "%s AUD_HP_DETz config failed\n", __func__);
 		return rc;
 	} else
 	  printk(KERN_ERR "%s AUD_HP_DETz config ok\n", __func__);
+
+	rc = pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(SAGA_AUD_SPK_EN), &spk_en);
+	if (rc) {
+		printk(KERN_ERR "%s AUD_HP_SPK_EN config failed\n", __func__);
+		return rc;
+	} else
+	  printk(KERN_ERR "%s AUD_SPK_EN config ok\n", __func__);
+
+	rc = pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(SAGA_PS_SHDN), &ps_shdn);
+	if (rc) {
+		printk(KERN_ERR "%s PS_SHDN config failed\n", __func__);
+		return rc;
+	} else
+	  printk(KERN_ERR "%s PS_SHDN config ok\n", __func__);
 
 	return 0;
 }
