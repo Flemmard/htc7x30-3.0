@@ -470,13 +470,12 @@ static struct attribute_group saga_properties_attr_group = {
 
 /* HTC_HEADSET_PMIC Driver */
 static struct htc_headset_pmic_platform_data htc_headset_pmic_data = {
-	.driver_flag	= DRIVER_HS_PMIC_RPC_KEY,
-	.hpin_gpio	= PM8058_GPIO_PM_TO_SYS(SAGA_AUD_HP_DETz),
-	.hpin_irq	= MSM_GPIO_TO_INT(
-			  PM8058_GPIO_PM_TO_SYS(SAGA_AUD_HP_DETz)),
-	.adc_mic_bias	= {HS_DEF_MIC_ADC_16_BIT_MIN,
-			   HS_DEF_MIC_ADC_16_BIT_MAX},
-	.adc_remote	= {0, 2502, 2860, 6822, 9086, 13614},
+  .driver_flag		= DRIVER_HS_PMIC_RPC_KEY,
+  .hpin_gpio	= PM8058_GPIO_PM_TO_SYS(SAGA_AUD_HP_DETz),
+  .hpin_irq		= 0,
+  .adc_mic_bias	= {HS_DEF_MIC_ADC_16_BIT_MIN,
+                   HS_DEF_MIC_ADC_16_BIT_MAX},
+  .adc_remote	= {0, 2502, 2860, 6822, 9086, 13614},
 };
 
 static struct platform_device htc_headset_pmic = {
@@ -496,6 +495,14 @@ static struct platform_device *headset_devices[] = {
 static struct htc_headset_mgr_platform_data htc_headset_mgr_data = {
 	.headset_devices_num	= ARRAY_SIZE(headset_devices),
 	.headset_devices	= headset_devices,
+};
+
+static struct platform_device htc_headset_mgr = {
+	.name	= "HTC_HEADSET_MGR",
+	.id	= -1,
+	.dev	= {
+		.platform_data	= &htc_headset_mgr_data,
+	},
 };
 
 /* HEADSET DRIVER END */
@@ -1784,14 +1791,14 @@ static struct platform_device msm_vpe_device = {
 
 #ifdef CONFIG_MSM_CAMERA
 static struct i2c_board_info msm_camera_boardinfo[] __initdata = {
-#ifdef CONFIG_MT9V113
-	{
-		I2C_BOARD_INFO("mt9v113", 0x3C),
-	},
-#endif
 #ifdef CONFIG_S5K4E1GX
 	{
 		I2C_BOARD_INFO("s5k4e1gx", 0x20 >> 1),
+	},
+#endif
+#ifdef CONFIG_MT9V113
+	{
+		I2C_BOARD_INFO("mt9v113", 0x3C), /* 0x78: w, 0x79 :r */
 	},
 #endif
 };
@@ -2207,7 +2214,7 @@ msm_i2c_gpio_config(int adap_id, int config_type)
 	struct msm_gpio *msm_i2c_table;
 
 	/* Each adapter gets 2 lines from the table */
-	if (adap_id > 0)
+	if (adap_id < 0)
 		return;
 	if (config_type)
 		msm_i2c_table = &msm_i2c_gpios_hw[adap_id*2];
@@ -2865,6 +2872,7 @@ static struct platform_device *devices[] __initdata = {
 #ifdef CONFIG_ARCH_MSM_FLASHLIGHT
         &saga_flashlight_device,
 #endif
+	&htc_headset_mgr,
         &pm8058_leds,
 };
 
