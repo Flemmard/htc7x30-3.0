@@ -784,8 +784,8 @@ retry:
 		printk(KERN_ERR "starting read retry policy count:%d\n", count);
 		udelay(10);
 		count++;
-		if (count < 20) {
-			if (count > 10)
+		if (count < 10) {
+			if (count > 5)
 				udelay(100);
 		} else
 			return rc;
