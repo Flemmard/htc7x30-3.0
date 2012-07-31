@@ -463,6 +463,12 @@ obj-$(CONFIG_MACH_SPADE) += board-spade-keypad.o board-spade-audio.o
 obj-$(CONFIG_MACH_SPADE) += board-spade-mmc.o board-spade-wifi.o
 obj-$(CONFIG_MACH_SPADE) += display/spade-panel.o
 obj-$(CONFIG_MACH_SPADE) += htc_bdaddress.o
+obj-$(CONFIG_MACH_GLACIER) += board-glacier.o 
+obj-$(CONFIG_MACH_GLACIER) += board-glacier-microp.o board-glacier-rfkill.o
+obj-$(CONFIG_MACH_GLACIER) += board-glacier-keypad.o board-glacier-audio.o
+obj-$(CONFIG_MACH_GLACIER) += board-glacier-mmc.o board-glacier-wifi.o
+obj-$(CONFIG_MACH_GLACIER) += display/glacier-panel.o
+obj-$(CONFIG_MACH_GLACIER) += htc_bdaddress.o
 obj-$(CONFIG_ARCH_MSM7X30) += display/panel-samsungwvga-tl2796a.o display/panel-samsungwvga-s6e63m0.o 
 ifeq ($(CONFIG_MICROP_COMMON),y)
 	obj-$(CONFIG_ARCH_MSM7X30) += display/panel-sonywvga-s6d16a0x21-7x30.o
