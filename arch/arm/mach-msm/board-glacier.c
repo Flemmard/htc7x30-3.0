@@ -3161,7 +3161,7 @@ static struct platform_device *devices[] __initdata = {
 #ifdef CONFIG_BT
         &glacier_rfkill,
 #endif
-		&glacier_fmtx_rfkill
+		&glacier_fmtx_rfkill,
 #ifdef CONFIG_ARCH_MSM_FLASHLIGHT
         &glacier_flashlight_device,
 #endif
