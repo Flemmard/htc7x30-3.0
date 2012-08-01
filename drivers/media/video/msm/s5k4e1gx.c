@@ -2508,9 +2508,7 @@ static struct platform_driver msm_camera_driver = {
 static int __init s5k4e1gx_init(void)
 {
 	printk("[CAM]s5k4e1gx_init\n");
-        int rc =platform_driver_register(&msm_camera_driver);
-	printk("[CAM]s5k4e1gx_init res=%d name=%s\n", rc, msm_camera_driver.driver.name);
-	return rc;
+        return platform_driver_register(&msm_camera_driver);
 }
 
 static void __exit s5k4e1gx_exit(void){
