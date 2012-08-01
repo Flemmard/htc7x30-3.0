@@ -1500,7 +1500,7 @@ static uint32_t qsd_spi_gpio_on_table[] = {
 static uint32_t qsd_spi_gpio_off_table[] = {
 	PCOM_GPIO_CFG(45, 0, GPIO_OUTPUT, GPIO_PULL_DOWN, GPIO_6MA),
 	PCOM_GPIO_CFG(47, 0, GPIO_OUTPUT, GPIO_PULL_DOWN, GPIO_6MA),
-	PCOM_GPIO_CFG(48, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_6MA),
+	PCOM_GPIO_CFG(48, 0, GPIO_INPUT, GPIO_NO_PULL, GPIO_6MA),
 	PCOM_GPIO_CFG(87, 0, GPIO_OUTPUT, GPIO_PULL_DOWN, GPIO_6MA),
 	PCOM_GPIO_CFG(89, 0, GPIO_INPUT, GPIO_PULL_UP, GPIO_6MA)
 };
@@ -2821,13 +2821,12 @@ static struct platform_device *devices[] __initdata = {
         &msm_lpa_device,
         &msm_aux_pcm_device,
 #endif
+#ifdef CONFIG_S5K4E1GX
+        &msm_camera_sensor_s5k4e1gx,
+#endif
 #ifdef CONFIG_MT9V113
         &msm_camera_sensor_mt9v113,
 #endif
-#ifdef CONFIG_S5K3E1GX
-        &msm_camera_sensor_s5k4e1gx,
-#endif
-
         &msm_device_adspdec,
         &qup_device_i2c,
 #if defined(CONFIG_MARIMBA_CORE) && \
