@@ -39,7 +39,7 @@ static struct pm_gpio pmic_gpio_htc_fmtx_output = {
 	.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
 	.output_value   = 0,
 	.pull           = PM_GPIO_PULL_NO,
-	.vin_sel        = PM_GPIO_VIN_L2,	/* L2 2.6 V */
+	.vin_sel        = PM8058_GPIO_VIN_L2,	/* L2 2.6 V */
 	.out_strength   = PM_GPIO_STRENGTH_HIGH,
 	.function       = PM_GPIO_FUNC_NORMAL,
 };
