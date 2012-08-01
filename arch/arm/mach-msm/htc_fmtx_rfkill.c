@@ -34,7 +34,7 @@ static const char htc_fmtx_name[] = "fmtx";
 static int htc_fmtx_switch_pin;
 
 /* pm8058 config */
-static struct pm8058_gpio pmic_gpio_htc_fmtx_output = {
+static struct pm_gpio pmic_gpio_htc_fmtx_output = {
 	.direction      = PM_GPIO_DIR_OUT,
 	.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
 	.output_value   = 0,
@@ -63,7 +63,7 @@ static int htc_fmtx_switch(int enable)
 	else
 		pmic_gpio_htc_fmtx_output.output_value = 0;
 
-	err = pm8058_gpio_config(htc_fmtx_switch_pin,
+	err = pm8xxx_gpio_config(htc_fmtx_switch_pin,
 						&pmic_gpio_htc_fmtx_output);
 	if (err)
 		pr_err("err: fmtx switch fail, err=%d\n", err);
