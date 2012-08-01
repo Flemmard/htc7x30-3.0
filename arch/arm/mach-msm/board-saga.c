@@ -1500,7 +1500,7 @@ static uint32_t qsd_spi_gpio_on_table[] = {
 static uint32_t qsd_spi_gpio_off_table[] = {
 	PCOM_GPIO_CFG(45, 0, GPIO_OUTPUT, GPIO_PULL_DOWN, GPIO_6MA),
 	PCOM_GPIO_CFG(47, 0, GPIO_OUTPUT, GPIO_PULL_DOWN, GPIO_6MA),
-	PCOM_GPIO_CFG(48, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_6MA),
+	PCOM_GPIO_CFG(48, 0, GPIO_INPUT, GPIO_NO_PULL, GPIO_6MA),
 	PCOM_GPIO_CFG(87, 0, GPIO_OUTPUT, GPIO_PULL_DOWN, GPIO_6MA),
 	PCOM_GPIO_CFG(89, 0, GPIO_INPUT, GPIO_PULL_UP, GPIO_6MA)
 };
@@ -1976,7 +1976,10 @@ static struct msm_camera_device_platform_data msm_camera_device_data = {
 	.ioext.appphy = MSM_CLK_CTL_PHYS,
 	.ioext.appsz  = MSM_CLK_CTL_SIZE,
 	.ioext.camifpadphy = 0xAB000000,
-	.ioext.camifpadsz  = 0x00000400
+	.ioext.camifpadsz  = 0x00000400,
+	.ioext.csiphy = 0xA6100000,
+	.ioext.csisz  = 0x00000400,
+	.ioext.csiirq = INT_CSI,
 };
 
 static struct camera_flash_cfg msm_camera_sensor_flash_cfg = {
@@ -2011,11 +2014,14 @@ static struct msm_camera_sensor_info msm_camera_sensor_s5k4e1gx_data = {
 	.flash_type     = MSM_CAMERA_FLASH_LED,
 	.resource       = msm_camera_resources,
 	.num_resources  = ARRAY_SIZE(msm_camera_resources),
-	.flash_cfg	= &msm_camera_sensor_flash_cfg,
-        //	.sensor_lc_disable = true, /* disable sensor lens correction */
+	.sensor_lc_disable = true, /* disable sensor lens correction */
+	.zero_shutter_mode = true, /* for doing zero shutter lag on MIPI */
 	.cam_select_pin = SAGA_CLK_SEL,
 	.csi_if = 1,
-        //	.zero_shutter_mode = true, /* for doing zero shutter lag on MIPI */
+#ifdef CONFIG_ARCH_MSM_FLASHLIGHT
+	.flash_cfg      = &msm_camera_sensor_flash_cfg,
+#endif
+
 };
 
 static struct platform_device msm_camera_sensor_s5k4e1gx = {
@@ -2821,13 +2827,12 @@ static struct platform_device *devices[] __initdata = {
         &msm_lpa_device,
         &msm_aux_pcm_device,
 #endif
+#ifdef CONFIG_S5K4E1GX
+        &msm_camera_sensor_s5k4e1gx,
+#endif
 #ifdef CONFIG_MT9V113
         &msm_camera_sensor_mt9v113,
 #endif
-#ifdef CONFIG_S5K3E1GX
-        &msm_camera_sensor_s5k4e1gx,
-#endif
-
         &msm_device_adspdec,
         &qup_device_i2c,
 #if defined(CONFIG_MARIMBA_CORE) && \

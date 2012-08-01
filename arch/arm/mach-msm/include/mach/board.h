@@ -295,6 +295,8 @@ struct msm_camera_sensor_info {
 	int full_size_preview; /* if use full-size preview */
 	int cam_select_pin; /* for two sensors */
 	int mirror_mode; /* for sensor upside down */
+	int zero_shutter_mode; /* for doing zero shutter lag on MIPI */
+	int sensor_lc_disable; /* for sensor lens correction support */
 	int(*camera_pm8058_power)(int); /* for express */
 	struct camera_flash_cfg* flash_cfg;
 	int gpio_set_value_force; /*true: force to set gpio  */
