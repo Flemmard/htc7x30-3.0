@@ -1976,7 +1976,10 @@ static struct msm_camera_device_platform_data msm_camera_device_data = {
 	.ioext.appphy = MSM_CLK_CTL_PHYS,
 	.ioext.appsz  = MSM_CLK_CTL_SIZE,
 	.ioext.camifpadphy = 0xAB000000,
-	.ioext.camifpadsz  = 0x00000400
+	.ioext.camifpadsz  = 0x00000400,
+	.ioext.csiphy = 0xA6100000,
+	.ioext.csisz  = 0x00000400,
+	.ioext.csiirq = INT_CSI,
 };
 
 static struct camera_flash_cfg msm_camera_sensor_flash_cfg = {
@@ -2011,11 +2014,14 @@ static struct msm_camera_sensor_info msm_camera_sensor_s5k4e1gx_data = {
 	.flash_type     = MSM_CAMERA_FLASH_LED,
 	.resource       = msm_camera_resources,
 	.num_resources  = ARRAY_SIZE(msm_camera_resources),
-	.flash_cfg	= &msm_camera_sensor_flash_cfg,
-        //	.sensor_lc_disable = true, /* disable sensor lens correction */
+	.sensor_lc_disable = true, /* disable sensor lens correction */
+	.zero_shutter_mode = true, /* for doing zero shutter lag on MIPI */
 	.cam_select_pin = SAGA_CLK_SEL,
 	.csi_if = 1,
-        //	.zero_shutter_mode = true, /* for doing zero shutter lag on MIPI */
+#ifdef CONFIG_ARCH_MSM_FLASHLIGHT
+	.flash_cfg      = &msm_camera_sensor_flash_cfg,
+#endif
+
 };
 
 static struct platform_device msm_camera_sensor_s5k4e1gx = {
