@@ -1867,7 +1867,7 @@ static struct msm_usb_host_platform_data msm_usb_host_pdata = {
 };
 #endif
 
-#ifdef CONFIG_USB_MSM_OTG_72K
+#if 0 //def CONFIG_USB_MSM_OTG_72K
 static struct vreg *vreg_3p3;
 static int msm_hsusb_ldo_init(int init)
 {
