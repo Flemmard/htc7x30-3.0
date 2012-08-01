@@ -431,6 +431,15 @@ config ARCH_MSM7X30_SMD
        help
          For QCT SMD function, we need 7x30 rpcrouter and smd drivers.
 
+config OVERLAY_FORCE_UPDATE
+       depends on MSM_MDP40
+       default y
+       bool "Force overlay to update screen"
+       help
+         Update the screen when the overlay is updated.
+         Do not use this if your framework updates the
+         screen when the overlay is updated.
+
 config MACH_RUNNYMEDE
        depends on ARCH_MSM7X30
        default n
