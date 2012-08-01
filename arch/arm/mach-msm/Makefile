@@ -466,8 +466,9 @@ obj-$(CONFIG_MACH_SPADE) += htc_bdaddress.o
 obj-$(CONFIG_MACH_GLACIER) += board-glacier.o 
 obj-$(CONFIG_MACH_GLACIER) += board-glacier-microp.o board-glacier-rfkill.o
 obj-$(CONFIG_MACH_GLACIER) += board-glacier-keypad.o board-glacier-audio.o
-obj-$(CONFIG_MACH_GLACIER) += board-glacier-mmc.o board-glacier-wifi.o htc_fmtx_rfkill.o
+obj-$(CONFIG_MACH_GLACIER) += board-glacier-mmc.o board-glacier-wifi.o
 obj-$(CONFIG_MACH_GLACIER) += display/glacier-panel.o
+# obj-$(CONFIG_MACH_GLACIER) += htc_fmtx_rfkill.o
 obj-$(CONFIG_MACH_GLACIER) += htc_bdaddress.o
 obj-$(CONFIG_ARCH_MSM7X30) += display/panel-samsungwvga-tl2796a.o display/panel-samsungwvga-s6e63m0.o 
 ifeq ($(CONFIG_MICROP_COMMON),y)
