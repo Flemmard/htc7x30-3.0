@@ -595,9 +595,6 @@ static struct a1026_platform_data a1026_data = {
        .gpio_a1026_clk = GLACIER_AUD_A1026_CLK,
 };
 
-static struct i2c_board_info i2c_a1026_devices[] = {
-};
-
 static struct i2c_board_info i2c_devices[] = {
 	{
 		I2C_BOARD_INFO(ATMEL_QT602240_NAME, 0x94 >> 1),
