@@ -474,17 +474,14 @@ ifeq ($(CONFIG_MICROP_COMMON),y)
 	obj-$(CONFIG_ARCH_MSM7X30) += display/panel-sonywvga-s6d16a0x21-7x30.o
 endif
 obj-$(CONFIG_MACH_VISION) += board-vision.o
-obj-$(CONFIG_MACH_VISION) += board-vision-microp.o
-obj-$(CONFIG_MACH_VISION) += board-vision-mmc.o
-obj-$(CONFIG_MACH_VISION) += board-vision-audio.o
-obj-$(CONFIG_MACH_VISION) += board-vision-keypad.o
-obj-$(CONFIG_MACH_VISION) += board-vision-rfkill.o
-obj-$(CONFIG_MACH_VISION) += board-vision-wifi.o
+obj-$(CONFIG_MACH_VISION) += board-vision-microp.o board-vision-rfkill.o
+obj-$(CONFIG_MACH_VISION) += board-vision-keypad.o board-vision-audio.o
+obj-$(CONFIG_MACH_VISION) += board-vision-mmc.o board-vision-wifi.o
 obj-$(CONFIG_MACH_VISION) += display/vision-panel.o
 obj-$(CONFIG_MACH_VISION) += htc_bdaddress.o
 obj-$(CONFIG_MACH_SAGA) += board-saga.o
-obj-$(CONFIG_MACH_SAGA) += board-saga-keypad.o
-obj-$(CONFIG_MACH_SAGA) += board-saga-mmc.o board-saga-wifi.o board-saga-rfkill.o
+obj-$(CONFIG_MACH_SAGA) += board-saga-keypad.o board-saga-rfkill.o
+obj-$(CONFIG_MACH_SAGA) += board-saga-mmc.o board-saga-wifi.o
 obj-$(CONFIG_MACH_SAGA) += display/saga-panel.o board-saga-audio.o
 #obj-$(CONFIG_MACH_SAGA) += htc_sleep_clk.o htc_fast_clk_7k.o
 obj-$(CONFIG_MACH_SAGA) += htc_bdaddress.o
