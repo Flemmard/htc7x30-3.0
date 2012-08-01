@@ -85,6 +85,7 @@
 #include <asm/mach/flash.h>
 #include <mach/vreg.h>
 #include <linux/platform_data/qcom_crypto_device.h>
+#include <mach/htc_fmtx_rfkill.h>
 #include <mach/htc_headset_mgr.h>
 #include <mach/htc_headset_gpio.h>
 #include <mach/htc_headset_pmic.h>
@@ -192,13 +193,13 @@ struct atmel_i2c_platform_data glacier_ts_atmel_data[] = {
 		.config_T8 = {8, 0, 5, 5, 0, 0, 10, 35, 5, 192},
 		.config_T9 = {139, 0, 0, 18, 12, 0, 16, 40, 3, 1, 10, 10, 5, 15, 4, 10, 20, 0, 0, 0, 0, 0, 0, 0, 40, 20, 155, 48, 152, 79, 25, 12},
 		.config_T15 = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-		.config_T18 = {0, 0},
-		.config_T19 = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+		.config_T19 = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 		.config_T20 = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 		.config_T22 = {15, 0, 0, 0, 0, 0, 0, 0, 35, 0, 0, 10, 15, 18, 255, 255, 0},
-		.config_T23 = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+		.config_T23 = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 		.config_T24 = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 		.config_T25 = {3, 0, 200, 50, 64, 31, 0, 0, 0, 0, 0, 0, 0, 0},
+		.config_T27 = {0, 0, 0, 0, 0, 0, 0},
 		.config_T28 = {0, 0, 2, 4, 16, 60},
 		.object_crc = {0x04, 0xE0, 0xBA},
 		.cable_config = {40, 35, 8, 16},
@@ -222,11 +223,10 @@ struct atmel_i2c_platform_data glacier_ts_atmel_data[] = {
 		.config_T8 = {8, 0, 5, 5, 0, 0, 10, 35},
 		.config_T9 = {139, 0, 0, 18, 12, 0, 16, 40, 3, 1, 10, 10, 5, 15, 4, 10, 20, 0, 0, 0, 0, 0, 0, 0, 40, 20, 155, 48, 152, 79, 25},
 		.config_T15 = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-		.config_T18 = {0, 0},
-		.config_T19 = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+		.config_T19 = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 		.config_T20 = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 		.config_T22 = {15, 0, 0, 0, 0, 0, 0, 0, 35, 0, 0, 10, 15, 18, 255, 255, 0},
-		.config_T23 = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+		.config_T23 = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 		.config_T24 = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 		.config_T25 = {3, 0, 200, 50, 64, 31, 0, 0, 0, 0, 0, 0, 0, 0},
 		.config_T27 = {0, 0, 0, 0, 0, 0, 0},
@@ -584,11 +584,18 @@ static struct akm8975_platform_data compass_platform_data = {
 	.layouts = GLACIER_LAYOUTS,
 };
 
+static struct tps65200_platform_data tps65200_data = {
+	.charger_check = 0,
+};
+
 static struct a1026_platform_data a1026_data = {
        .gpio_a1026_micsel = GLACIER_AUD_MICPATH_SEL,
        .gpio_a1026_wakeup = GLACIER_AUD_A1026_WAKEUP,
        .gpio_a1026_reset = GLACIER_AUD_A1026_RESET,
        .gpio_a1026_clk = GLACIER_AUD_A1026_CLK,
+};
+
+static struct i2c_board_info i2c_a1026_devices[] = {
 };
 
 static struct i2c_board_info i2c_devices[] = {
@@ -603,8 +610,12 @@ static struct i2c_board_info i2c_devices[] = {
 		.irq = MSM_GPIO_TO_INT(GLACIER_GPIO_UP_INT_N)
 	},
 	{
+		I2C_BOARD_INFO("tps65200", 0xD4 >> 1),
+		.platform_data = &tps65200_data,
+	},
+	{
 		I2C_BOARD_INFO("audience_a1026", 0x3E),
-		.platform_data = &a1026_data,
+			.platform_data = &a1026_data,
 	},
 };
 
@@ -2329,6 +2340,19 @@ static struct platform_device glacier_rfkill = {
 };
 #endif
 
+static struct htc_fmtx_platform_data htc_fmtx_data = {
+	.switch_pin	= GLACIER_WFM_ANT_SW,
+
+};
+
+static struct platform_device glacier_fmtx_rfkill = {
+	.name = "htc_fmtx_rfkill",
+	.id = -1,
+	.dev = {
+		.platform_data = &htc_fmtx_data,
+	},
+};
+
 #ifdef CONFIG_MSM_SDIO_AL
 static struct msm_gpio mdm2ap_status = {
 	GPIO_CFG(77, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
@@ -3140,6 +3164,7 @@ static struct platform_device *devices[] __initdata = {
 #ifdef CONFIG_BT
         &glacier_rfkill,
 #endif
+		&glacier_fmtx_rfkill
 #ifdef CONFIG_ARCH_MSM_FLASHLIGHT
         &glacier_flashlight_device,
 #endif
@@ -3216,14 +3241,12 @@ static void __init glacier_init(void)
 
 	spi_register_board_info(msm_spi_board_info, ARRAY_SIZE(msm_spi_board_info));
 
-	if (system_rev < 3)
-		glacier_oj_data.ap_code = false;
-	if (system_rev < 0x80)	/*0x80 = PVT*/
-		glacier_oj_data.ledval = 0;
-        platform_device_register(&glacier_oj);
+	if ((system_rev >= 0x80) || (engineerid & 0x2))
+		glacier_oj_data.ap_code = true;
+	platform_device_register(&glacier_oj);
 	if (!panel_type) {
-		glacier_ts_atmel_data[0].config_T9[9] = 7;
-		glacier_ts_atmel_data[1].config_T9[9] = 7;
+		glacier_ts_atmel_data[0].config_T9[9] = 5;
+		glacier_ts_atmel_data[0].abs_y_max = 954;
 	}
 	msm_pm_set_platform_data(msm_pm_data, ARRAY_SIZE(msm_pm_data));
 	BUG_ON(msm_pm_boot_init(MSM_PM_BOOT_CONFIG_RESET_VECTOR, ioremap(0x0, PAGE_SIZE)));
