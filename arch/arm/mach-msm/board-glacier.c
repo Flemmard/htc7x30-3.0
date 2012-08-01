@@ -85,7 +85,7 @@
 #include <asm/mach/flash.h>
 #include <mach/vreg.h>
 #include <linux/platform_data/qcom_crypto_device.h>
-/*#include <mach/htc_fmtx_rfkill.h>*/
+#include <mach/htc_fmtx_rfkill.h>
 #include <mach/htc_headset_mgr.h>
 #include <mach/htc_headset_gpio.h>
 #include <mach/htc_headset_pmic.h>
@@ -2339,7 +2339,6 @@ static struct platform_device glacier_rfkill = {
 
 static struct htc_fmtx_platform_data htc_fmtx_data = {
 	.switch_pin	= GLACIER_WFM_ANT_SW,
-
 };
 
 static struct platform_device glacier_fmtx_rfkill = {
