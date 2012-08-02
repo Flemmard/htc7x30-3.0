@@ -59,7 +59,7 @@ obj-$(CONFIG_SPI_QSD)			+= spi_qsd.o spi_qsdold.o
 obj-$(CONFIG_SPI_DISPLAY)		+= spi_display.o
 obj-$(CONFIG_SPI_QUP)			+= spi_qsd.o
 obj-$(CONFIG_SPI_AIC3254)		+= spi_aic3254.o
-obj-$(CONFIG_SPI_CRUCIAL_OJ)	        += spi_oj.o
+obj-$(CONFIG_SPI_CRUCIAL_OJ)	+= spi_oj.o
 obj-$(CONFIG_SPI_SP8803COM)		+= spi_sp8803com.o
 obj-$(CONFIG_SPI_SP8803COM)		+= spi_sp8803com_tty.o
 

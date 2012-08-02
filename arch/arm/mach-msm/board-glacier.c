@@ -116,6 +116,7 @@
 #include "board-glacier.h"
 #include "board-msm7x30-regulator.h"
 #include <mach/board_htc.h>
+#include <mach/cable_detect.h>
 #ifdef CONFIG_PERFLOCK
 #include <mach/perflock.h>
 #endif
@@ -1803,7 +1804,7 @@ static struct msm_usb_host_platform_data msm_usb_host_pdata = {
 };
 #endif
 
-#ifdef CONFIG_USB_MSM_OTG_72K
+#if 0 // CONFIG_USB_MSM_OTG_72K
 static struct vreg *vreg_3p3;
 static int msm_hsusb_ldo_init(int init)
 {

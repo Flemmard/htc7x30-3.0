@@ -690,7 +690,7 @@ config CABLE_DETECT_ACCESSORY_BY_ADC
 
 config CABLE_DETECT_GPIO_DOCK
         boolean "CABLE_DETECT_GPIO_DOCK"
-        depends on CABLE_DETECT_8960
+        depends on CABLE_DETECT_8960 || CABLE_DETECT_8X55
         default n
 
 source "drivers/misc/c2port/Kconfig"
