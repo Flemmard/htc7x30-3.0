@@ -1602,29 +1602,27 @@ static int32_t initialize_ov8810_registers(void)
 			return rc;
 	}
 
-#if 0
 	/*use calibrated LSC table*/
-  if (!sdata->sensor_lc_disable) { /* 0902 disable old LSC method */
-	if (HTC_update_ov8810_lsc_registers()) {
-		pr_info("[CAM][LSC calibration] use calibrated LSC table done!\n");
-	} else {/*use default LSC table*/
-		array_length =
-			sizeof(lsc_table_array) / sizeof(lsc_table_array[0]);
+	if (!sdata->sensor_lc_disable) { /* 0902 disable old LSC method */
+		if (HTC_update_ov8810_lsc_registers()) {
+			pr_info("[CAM][LSC calibration] use calibrated LSC table done!\n");
+		} else {/*use default LSC table*/
+			array_length =
+				sizeof(lsc_table_array) / sizeof(lsc_table_array[0]);
 
-		for (i = 0; i < array_length; i++) {
-			rc = ov8810_i2c_write_b(ov8810_client->addr,
-				lsc_table_array[i].reg_addr,
-				lsc_table_array[i].reg_val);
+			for (i = 0; i < array_length; i++) {
+				rc = ov8810_i2c_write_b(ov8810_client->addr,
+					lsc_table_array[i].reg_addr,
+					lsc_table_array[i].reg_val);
+			}
+			pr_info("[CAM][LSC calibration] use default LSC table done\n");
 		}
-		pr_info("[CAM][LSC calibration] use default LSC table done\n");
+  	} else {
+		/* add streaming on */
+		ov8810_i2c_write_b(ov8810_client->addr,
+		OV8810_REG_MODE_SELECT, OV8810_MODE_SELECT_STREAM);
 	}
-  } else {
-	  /* add streaming on */
-	  ov8810_i2c_write_b(ov8810_client->addr,
-		  OV8810_REG_MODE_SELECT, OV8810_MODE_SELECT_STREAM);
-  }
-#endif
-  return rc;
+	return rc;
 } /* end of initialize_ov8810_ov8m0vc_registers. */
 
 static int32_t ov8810_setting(int rt)
