@@ -3078,12 +3078,11 @@ static struct platform_device *devices[] __initdata = {
 
 static void __init spade_init(void)
 {
-	int rc = 0, i = 0;
+	int rc = 0;
 	struct kobject *properties_kobj;
 	unsigned smem_size;
 	uint32_t soc_version = 0;
 	struct proc_dir_entry *entry = NULL;
-	char *device_mid;
 
 	soc_version = socinfo_get_version();
 
