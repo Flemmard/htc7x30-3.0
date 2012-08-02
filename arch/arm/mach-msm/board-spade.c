@@ -2200,6 +2200,7 @@ static struct msm_camera_sensor_info msm_camera_sensor_ov8810_data = {
 	.resource = msm_camera_resources,
 	.num_resources = ARRAY_SIZE(msm_camera_resources),
 	.flash_cfg = &msm_camera_sensor_flash_cfg,
+	.sensor_lc_disable = true, /* disable sensor lens correction */
 };
 
 static struct platform_device msm_camera_sensor_ov8810 = {
