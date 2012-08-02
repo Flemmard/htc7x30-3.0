@@ -2148,35 +2148,39 @@ static int glacier_sensor_power_disable(char *power)
 static int glacier_sensor_vreg_on(void)
 {
 	int rc;
+
+	struct pm_gpio camera_analog_pw_on = {
+		.direction		= PM_GPIO_DIR_OUT,
+		.output_buffer	= PM_GPIO_OUT_BUF_CMOS,
+		.output_value	= 1,
+		.pull			= PM_GPIO_PULL_NO,
+		.out_strength	= PM_GPIO_STRENGTH_HIGH,
+		.function = PM_GPIO_FUNC_NORMAL,
+	};
+
 	pr_info("%s camera vreg on\n", __func__);
 
-	if (system_rev > 1) {
-		/*Board XC and after*/
-		/*camera VCM power*/
+	/*camera VCM power*/
+	if (system_rev >= 1)
 		rc = glacier_sensor_power_enable("gp4", 2850);
-		/*camera digital power*/
-		rc = glacier_sensor_power_enable("wlan", 1800);
-	} else {
-		/*Board XA,XB*/
-		/*camera VCM power*/
+	else
 		rc = glacier_sensor_power_enable("wlan", 2850);
-		/*camera digital power*/
-		rc = glacier_sensor_power_enable("gp4", 1800);
-	}
-
-	/*camera analog power*/
-	if (system_rev > 0) {
-		/* printk("camera analog power by GPIO\n"); */
-		/* This delay is just temporary work-around,*/
-		/*and will remove when HW power team fix */
-		/*the power up two stage problem with pmic */
-		udelay(200);
-		gpio_set_value(GLACIER_CAM_A2V85_EN, 1);
-	} else
-		rc = glacier_sensor_power_enable("gp6", 2850);
 
 	/*camera IO power*/
 	rc = glacier_sensor_power_enable("gp2", 1800);
+
+
+	/*camera analog power*/
+	pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(GLACIER_CAM_A2V85_EN), &camera_analog_pw_on);
+
+	/*camera digital power*/
+	if (system_rev >= 1)
+		rc = glacier_sensor_power_enable("wlan", 1800);
+	else
+		rc = glacier_sensor_power_enable("gp4", 1800);
+
+	udelay(200);
+
 	return rc;
 }
 
@@ -2184,17 +2188,22 @@ static int glacier_sensor_vreg_off(void)
 {
 	int rc;
 	/*camera analog power*/
-	if (system_rev > 0) {
-		printk(KERN_INFO "camera analog power by GPIO\n");
-		gpio_set_value(GLACIER_CAM_A2V85_EN, 0);
-	} else {
-		printk(KERN_INFO "camera analog power by PMIC\n");
-		rc = glacier_sensor_power_disable("gp6");
-	}
+	struct pm_gpio camera_analog_pw_off = {
+		.direction		= PM_GPIO_DIR_OUT,
+		.output_buffer	= PM_GPIO_OUT_BUF_CMOS,
+		.output_value	= 0,
+		.pull			= PM_GPIO_PULL_NO,
+		.out_strength	= PM_GPIO_STRENGTH_LOW,
+		.function = PM_GPIO_FUNC_NORMAL,
+	};
+
+	pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(GLACIER_CAM_A2V85_EN), &camera_analog_pw_off);
 	/*camera digital power*/
 	rc = glacier_sensor_power_disable("gp4");
+
 	/*camera IO power*/
 	rc = glacier_sensor_power_disable("gp2");
+
 	/*camera VCM power*/
 	rc = glacier_sensor_power_disable("wlan");
 	return rc;
@@ -2285,6 +2294,11 @@ static struct msm_camera_sensor_info msm_camera_sensor_s5k4e1gx_data = {
 	.sensor_reset   = GLACIER_CAM_RST,
 	.vcm_pwd        = GLACIER_CAM_PWD,
 	.camera_clk_switch	= glacier_s5k4e1gx_clk_switch,
+/*	.camera_analog_pwd = "gp8",
+	.camera_io_pwd = "gp2",
+	.camera_vcm_pwd = "wlan",
+	.camera_digital_pwd = "gp4",
+	.analog_pwd1_gpio = GLACIER_CAM_A2V85_EN,*/
 	.camera_power_on = glacier_sensor_vreg_on,
 	.camera_power_off = glacier_sensor_vreg_off,
 	.pdata          = &msm_camera_device_data,
@@ -2295,11 +2309,8 @@ static struct msm_camera_sensor_info msm_camera_sensor_s5k4e1gx_data = {
 	.sensor_platform_info = NULL,
 	.resource       = msm_camera_resources,
 	.num_resources  = ARRAY_SIZE(msm_camera_resources),
-	.power_down_disable = false, /* true: disable pwd down function */
-
-	.csi_if = 0,
-	.dev_node = 0,
-	.use_rawchip = 0,
+	.sensor_lc_disable = true, /* disable sensor lens correction */
+	.cam_select_pin = GLACIER_CLK_SWITCH,
 };
 
 static struct platform_device msm_camera_sensor_s5k4e1gx = {
