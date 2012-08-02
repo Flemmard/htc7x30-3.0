@@ -22,10 +22,18 @@
 #include <mach/pmic.h>
 #include <mach/dal.h>
 #include "board-glacier.h"
+#if defined(CONFIG_MSM7KV2_1X_AUDIO)
+#include <mach/qdsp5v2_1x/snddev_icodec.h>
+#include <mach/qdsp5v2_1x/snddev_ecodec.h>
+#include <mach/qdsp5v2_1x/audio_def.h>
+#include <mach/qdsp5v2_1x/voice.h>
+#endif
+#if defined(CONFIG_MSM7KV2_AUDIO)
 #include <mach/qdsp5v2_2x/snddev_icodec.h>
 #include <mach/qdsp5v2_2x/snddev_ecodec.h>
 #include <mach/qdsp5v2_2x/audio_def.h>
 #include <mach/qdsp5v2_2x/voice.h>
+#endif
 #include <mach/htc_acoustic_7x30.h>
 #include <mach/htc_acdb_7x30.h>
 #include <mach/board_htc.h>
@@ -105,19 +113,6 @@ static unsigned aux_pcm_gpio_on[] = {
 	GPIO_CFG(GLACIER_GPIO_BT_PCM_SYNC, 1, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),	/* PCM_SYNC */
 	GPIO_CFG(GLACIER_GPIO_BT_PCM_CLK, 1, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),	/* PCM_CLK  */
 };
-
-static void config_gpio_table(uint32_t *table, int len)
-{
-	int n, rc;
-	for (n = 0; n < len; n++) {
-		rc = gpio_tlmm_config(table[n], GPIO_CFG_ENABLE);
-		if (rc) {
-			pr_err("[CAM] %s: gpio_tlmm_config(%#x)=%d\n",
-				__func__, table[n], rc);
-			break;
-		}
-	}
-}
 
 void glacier_snddev_poweramp_on(int en)
 {
@@ -286,8 +281,8 @@ static struct acoustic_ops acoustic = {
 
 void __init glacier_audio_init(void)
 {
-/*
-	static struct pm8058_gpio audio_pwr = {
+
+	static struct pm_gpio audio_pwr = {
 		.direction      = PM_GPIO_DIR_OUT,
 		.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
 		.output_value   = 0,
@@ -296,16 +291,16 @@ void __init glacier_audio_init(void)
 		.function       = PM_GPIO_FUNC_NORMAL,
 		.vin_sel        = 6,
 	};
-*/
+
 	mutex_init(&bt_sco_lock);
 	htc_7x30_register_analog_ops(&ops);
 	htc_7x30_register_ecodec_ops(&eops);
 	htc_7x30_register_voice_ops(&vops);
 	acoustic_register_ops(&acoustic);
-/*
-	pm8058_gpio_config(GLACIER_AUD_SPK_ENO, &audio_pwr);
-	pm8058_gpio_config(GLACIER_AUD_HP_EN, &audio_pwr);
-*/
+
+	pm8xxx_gpio_config(GLACIER_AUD_SPK_ENO, &audio_pwr);
+	pm8xxx_gpio_config(GLACIER_AUD_HP_EN, &audio_pwr);
+
 	mutex_lock(&bt_sco_lock);
 	config_gpio_table(aux_pcm_gpio_off, ARRAY_SIZE(aux_pcm_gpio_off));
 	gpio_set_value(GLACIER_GPIO_BT_PCM_OUT, 0);
