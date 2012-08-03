@@ -298,6 +298,12 @@ struct msm_camera_sensor_info {
 	int zero_shutter_mode; /* for doing zero shutter lag on MIPI */
 	int sensor_lc_disable; /* for sensor lens correction support */
 	int(*camera_pm8058_power)(int); /* for express */
+	/*power*/
+	char *camera_analog_pwd;
+	char *camera_io_pwd;
+	char *camera_vcm_pwd;
+	char *camera_digital_pwd;
+	int analog_pwd1_gpio;
 	struct camera_flash_cfg* flash_cfg;
 	int gpio_set_value_force; /*true: force to set gpio  */
 	int dev_node;
