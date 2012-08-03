@@ -700,7 +700,7 @@ static int s5k4e1gx_probe_init_sensor(const struct msm_camera_sensor_info *data)
 		goto init_probe_fail;
 
 	/* Add Lens Correction Common Setting For Maverick*/
-        /*
+    
 	if (!sdata->sensor_lc_disable) {
 		pr_info("[CAM]sensor_lc_disable=%d\n", sdata->sensor_lc_disable);
 
@@ -709,8 +709,7 @@ static int s5k4e1gx_probe_init_sensor(const struct msm_camera_sensor_info *data)
 		if (rc < 0)
 			goto init_probe_fail;
 	}
-        */
-
+    
     /* Add analog settings For Maverick*/
 	rc = s5k4e1gx_i2c_read_b(s5k4e1gx_client->addr, S5K4E1GX_REVISION_ID, &evt_ver);
 	if (!(rc < 0)) {
