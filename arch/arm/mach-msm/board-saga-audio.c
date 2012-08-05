@@ -412,15 +412,15 @@ void __init saga_audio_init(void)
 	aic3254_register_ctl_ops(&cops);
 
 	/* Init PMIC GPIO */
-	pm8xxx_gpio_config(SAGA_AUD_HP_EN, &audio_pwr_28);
-	pm8xxx_gpio_config(SAGA_AUD_EP_EN, &audio_pwr_28);
-	pm8xxx_gpio_config(SAGA_AUD_SPK_EN, &audio_pwr_28);
-	pm8xxx_gpio_config(SAGA_AUD_MICPATH_SEL_XB, &audio_pwr_28);
+	pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(SAGA_AUD_HP_EN), &audio_pwr_28);
+	pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(SAGA_AUD_EP_EN), &audio_pwr_28);
+	pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(SAGA_AUD_SPK_EN), &audio_pwr_28);
+	pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(SAGA_AUD_MICPATH_SEL_XB), &audio_pwr_28);
 	/* Rest AIC3254 */
-	pm8xxx_gpio_config(SAGA_AUD_A3254_RSTz, &audio_pwr_18);
+	pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(SAGA_AUD_A3254_RSTz), &audio_pwr_18);
 	mdelay(1);
 	audio_pwr_18.output_value = 1;
-	pm8xxx_gpio_config(SAGA_AUD_A3254_RSTz, &audio_pwr_18);
+	pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(SAGA_AUD_A3254_RSTz), &audio_pwr_18);
 	audio_pwr_18.output_value = 0;
 
 	mutex_lock(&bt_sco_lock);

@@ -284,7 +284,7 @@ int saga_wifi_bt_sleep_clk_ctl(int on, int id)
 			&& (CLK_OFF == saga_sleep_clk_state_bt)) {
 			printk(KERN_DEBUG "EN SLEEP CLK\n");
 			pmic_gpio_sleep_clk_output.function = PM_GPIO_FUNC_2;
-			err = pm8xxx_gpio_config(SAGA_WIFI_SLOW_CLK,
+			err = pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(SAGA_WIFI_SLOW_CLK),
 					&pmic_gpio_sleep_clk_output);
 			if (err) {
 				spin_unlock_irqrestore(&saga_w_b_slock,
@@ -307,7 +307,7 @@ int saga_wifi_bt_sleep_clk_ctl(int on, int id)
 			pmic_gpio_sleep_clk_output.function =
 						PM_GPIO_FUNC_NORMAL;
 			err = pm8xxx_gpio_config(
-					SAGA_WIFI_SLOW_CLK,
+                                                 PM8058_GPIO_PM_TO_SYS(SAGA_WIFI_SLOW_CLK),
 					&pmic_gpio_sleep_clk_output);
 			if (err) {
 				spin_unlock_irqrestore(&saga_w_b_slock,
