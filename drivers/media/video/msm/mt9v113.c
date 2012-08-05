@@ -1538,8 +1538,6 @@ static int mt9v113_set_wb(enum wb_mode wb_value)
 	return 0;
 }
 
-
-#ifdef CONFIG_MSM_CAMERA_8X60
 static int mt9v113_vreg_enable(struct platform_device *pdev)
 {
 	struct msm_camera_sensor_info *sdata = pdev->dev.platform_data;
@@ -1568,7 +1566,6 @@ static int mt9v113_vreg_disable(struct platform_device *pdev)
 	return rc;
 }
 */
-#endif
 
 static int mt9v113_sensor_init(void)
 {
@@ -2001,14 +1998,12 @@ probe_fail:
 
 static int __mt9v113_probe(struct platform_device *pdev)
 {
-#ifdef CONFIG_MSM_CAMERA_8X60
 	int rc;
 	struct msm_camera_sensor_info *sdata = pdev->dev.platform_data;
 	sdata->pdata->camera_gpio_on();
 	rc = mt9v113_vreg_enable(pdev);
 	if (rc < 0)
 		pr_err("[CAM]__mt9v113_probe fail sensor power on error\n");
-#endif
 
 	pr_info("[CAM]__mt9v113_probe\n");
 	mt9v113_pdev = pdev;
