@@ -2308,6 +2308,10 @@ static struct msm_camera_sensor_info msm_camera_sensor_s5k4e1gx_data = {
 	.camera_power_off = glacier_sensor_vreg_off,
 	.pdata          = &msm_camera_device_data,
 	.flash_type     = MSM_CAMERA_FLASH_LED,
+	.power_down_disable = false, /* true: disable pwd down function */
+	.csi_if = 0,
+	.dev_node = 0,
+	.use_rawchip = 0,
 #ifdef CONFIG_ARCH_MSM_FLASHLIGHT
 	.flash_cfg      = &msm_camera_sensor_flash_cfg,
 #endif
