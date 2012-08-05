@@ -2200,6 +2200,7 @@ static struct msm_camera_sensor_info msm_camera_sensor_ov8810_data = {
 	.resource = msm_camera_resources,
 	.num_resources = ARRAY_SIZE(msm_camera_resources),
 	.flash_cfg = &msm_camera_sensor_flash_cfg,
+	.sensor_lc_disable = true, /* disable sensor lens correction */
 };
 
 static struct platform_device msm_camera_sensor_ov8810 = {
@@ -3077,12 +3078,11 @@ static struct platform_device *devices[] __initdata = {
 
 static void __init spade_init(void)
 {
-	int rc = 0, i = 0;
+	int rc = 0;
 	struct kobject *properties_kobj;
 	unsigned smem_size;
 	uint32_t soc_version = 0;
 	struct proc_dir_entry *entry = NULL;
-	char *device_mid;
 
 	soc_version = socinfo_get_version();
 

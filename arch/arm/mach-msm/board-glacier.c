@@ -2154,6 +2154,10 @@ static int glacier_sensor_power_disable(char *power)
 static int glacier_sensor_vreg_on(void)
 {
 	int rc;
+<<<<<<< HEAD
+=======
+
+>>>>>>> upstream/master
 	struct pm_gpio camera_analog_pw_on = {
 		.direction		= PM_GPIO_DIR_OUT,
 		.output_buffer	= PM_GPIO_OUT_BUF_CMOS,
@@ -2299,7 +2303,11 @@ static struct msm_camera_sensor_info msm_camera_sensor_s5k4e1gx_data = {
 	.sensor_reset   = GLACIER_CAM_RST,
 	.vcm_pwd     = GLACIER_CAM_PWD,
 	.camera_clk_switch	= glacier_s5k4e1gx_clk_switch,
+<<<<<<< HEAD
 /*	.camera_analog_pwd = "gp8", */
+=======
+/*	.camera_analog_pwd = "gp8",*/
+>>>>>>> upstream/master
 	.camera_io_pwd = "gp2",
 	.camera_vcm_pwd = "wlan",
 	.camera_digital_pwd = "gp4",
@@ -2310,9 +2318,12 @@ static struct msm_camera_sensor_info msm_camera_sensor_s5k4e1gx_data = {
 	.flash_type     = MSM_CAMERA_FLASH_LED,
 	.resource       = msm_camera_resources,
 	.num_resources  = ARRAY_SIZE(msm_camera_resources),
+<<<<<<< HEAD
 #ifdef CONFIG_ARCH_MSM_FLASHLIGHT,
 	.flash_cfg	= &msm_camera_sensor_flash_cfg,
 #endif
+=======
+>>>>>>> upstream/master
 	.sensor_lc_disable = true, /* disable sensor lens correction */
 	.cam_select_pin = GLACIER_CLK_SWITCH,
 };
