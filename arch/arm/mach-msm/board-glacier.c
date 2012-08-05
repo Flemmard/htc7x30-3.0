@@ -2297,7 +2297,7 @@ static void glacier_mt9v113_clk_switch(void){
 static struct msm_camera_sensor_info msm_camera_sensor_s5k4e1gx_data = {
 	.sensor_name    = "s5k4e1gx",
 	.sensor_reset   = GLACIER_CAM_RST,
-	.vcm_pwd        = GLACIER_CAM_PWD,
+	.vcm_pwd     = GLACIER_CAM_PWD,
 	.camera_clk_switch	= glacier_s5k4e1gx_clk_switch,
 /*	.camera_analog_pwd = "gp8", */
 	.camera_io_pwd = "gp2",
@@ -2308,17 +2308,13 @@ static struct msm_camera_sensor_info msm_camera_sensor_s5k4e1gx_data = {
 	.camera_power_off = glacier_sensor_vreg_off,
 	.pdata          = &msm_camera_device_data,
 	.flash_type     = MSM_CAMERA_FLASH_LED,
-	.power_down_disable = false, /* true: disable pwd down function */
-	.csi_if = 0,
-	.dev_node = 0,
-	.use_rawchip = 0,
-#ifdef CONFIG_ARCH_MSM_FLASHLIGHT
-	.flash_cfg      = &msm_camera_sensor_flash_cfg,
-#endif
-	.sensor_platform_info = NULL,
 	.resource       = msm_camera_resources,
 	.num_resources  = ARRAY_SIZE(msm_camera_resources),
+#ifdef CONFIG_ARCH_MSM_FLASHLIGHT,
+	.flash_cfg	= &msm_camera_sensor_flash_cfg,
+#endif
 	.sensor_lc_disable = true, /* disable sensor lens correction */
+	.cam_select_pin = GLACIER_CLK_SWITCH,
 };
 
 static struct platform_device msm_camera_sensor_s5k4e1gx = {
@@ -3137,7 +3133,7 @@ static struct platform_device *devices[] __initdata = {
         &msm_camera_sensor_s5k4e1gx,
 #endif
 #ifdef CONFIG_MT9V113
-	&msm_camera_sensor_mt9v113, /* 2nd CAM */
+		&msm_camera_sensor_mt9v113, /* 2nd CAM */
 #endif
         &msm_device_adspdec,
         &qup_device_i2c,
