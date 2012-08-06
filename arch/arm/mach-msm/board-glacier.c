@@ -2156,7 +2156,8 @@ static int glacier_sensor_power_disable(char *power)
 static int glacier_sensor_vreg_on(void)
 {
 	int rc;
-/*
+	pr_info("%s camera vreg on\n", __func__);
+
 	struct pm_gpio camera_analog_pw_on = {
 		.direction		= PM_GPIO_DIR_OUT,
 		.output_buffer	= PM_GPIO_OUT_BUF_CMOS,
@@ -2165,8 +2166,6 @@ static int glacier_sensor_vreg_on(void)
 		.out_strength	= PM_GPIO_STRENGTH_HIGH,
 		.function = PM_GPIO_FUNC_NORMAL,
 	};
-*/
-	pr_info("%s camera vreg on\n", __func__);
 
 	/*camera VCM power*/
 	if (system_rev >= 1)
@@ -2177,10 +2176,13 @@ static int glacier_sensor_vreg_on(void)
 	/*camera IO power*/
 	rc = glacier_sensor_power_enable("gp2", 1800);
 
-
 	/*camera analog power*/
-	//pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(GLACIER_CAM_A2V85_EN), &camera_analog_pw_on);
-	gpio_set_value(PM8058_GPIO_PM_TO_SYS(GLACIER_CAM_A2V85_EN), 1);
+	rc = pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(GLACIER_CAM_A2V85_EN), &camera_analog_pw_on);
+	if (rc) {
+		printk(KERN_ERR "%s CAM_A2V85_EN config failed\n", __func__);
+		return rc;
+	} else
+	  printk(KERN_ERR "%s CAM_A2V85_EN config ok\n", __func__);
 
 	/*camera digital power*/
 	if (system_rev >= 1)
@@ -2196,8 +2198,8 @@ static int glacier_sensor_vreg_on(void)
 static int glacier_sensor_vreg_off(void)
 {
 	int rc;
-	/*camera analog power*/
-/*
+	pr_info("%s camera vreg off\n", __func__);
+
 	struct pm_gpio camera_analog_pw_off = {
 		.direction		= PM_GPIO_DIR_OUT,
 		.output_buffer	= PM_GPIO_OUT_BUF_CMOS,
@@ -2206,9 +2208,15 @@ static int glacier_sensor_vreg_off(void)
 		.out_strength	= PM_GPIO_STRENGTH_LOW,
 		.function = PM_GPIO_FUNC_NORMAL,
 	};
-	pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(GLACIER_CAM_A2V85_EN), &camera_analog_pw_off);
-*/
-	gpio_set_value(PM8058_GPIO_PM_TO_SYS(GLACIER_CAM_A2V85_EN), 0);
+
+	/*camera analog power*/
+	rc = pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(GLACIER_CAM_A2V85_EN), &camera_analog_pw_off);
+	if (rc) {
+		printk(KERN_ERR "%s CAM_A2V85_EN config failed\n", __func__);
+		return rc;
+	} else
+	  printk(KERN_ERR "%s CAM_A2V85_EN config ok\n", __func__);
+
 	/*camera digital power*/
 	rc = glacier_sensor_power_disable("gp4");
 
@@ -2217,6 +2225,7 @@ static int glacier_sensor_vreg_off(void)
 
 	/*camera VCM power*/
 	rc = glacier_sensor_power_disable("wlan");
+
 	return rc;
 }
 
@@ -2305,11 +2314,6 @@ static struct msm_camera_sensor_info msm_camera_sensor_s5k4e1gx_data = {
 	.sensor_reset   = GLACIER_CAM_RST,
 	.vcm_pwd     = GLACIER_CAM_PWD,
 	.camera_clk_switch	= glacier_s5k4e1gx_clk_switch,
-/*	.camera_analog_pwd = "gp8",*/
-	.camera_io_pwd = "gp2",
-	.camera_vcm_pwd = "wlan",
-	.camera_digital_pwd = "gp4",
-	.analog_pwd1_gpio = GLACIER_CAM_A2V85_EN,
 	.camera_power_on = glacier_sensor_vreg_on,
 	.camera_power_off = glacier_sensor_vreg_off,
 	.pdata          = &msm_camera_device_data,
