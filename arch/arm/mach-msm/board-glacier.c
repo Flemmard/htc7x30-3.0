@@ -1724,6 +1724,7 @@ static uint32_t qsd_spi_gpio_on_table[] = {
 	PCOM_GPIO_CFG(45, 1, GPIO_INPUT, GPIO_NO_PULL, GPIO_16MA),
 	PCOM_GPIO_CFG(47, 1, GPIO_INPUT, GPIO_NO_PULL, GPIO_16MA),
 	PCOM_GPIO_CFG(48, 1, GPIO_INPUT, GPIO_NO_PULL, GPIO_16MA),
+	PCOM_GPIO_CFG(87, 1, GPIO_INPUT, GPIO_NO_PULL, GPIO_16MA),
 	PCOM_GPIO_CFG(89, 2, GPIO_INPUT, GPIO_NO_PULL, GPIO_16MA)
 };
 
@@ -1731,6 +1732,7 @@ static uint32_t qsd_spi_gpio_off_table[] = {
 	PCOM_GPIO_CFG(45, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_16MA),
 	PCOM_GPIO_CFG(47, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_16MA),
 	PCOM_GPIO_CFG(48, 0, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_16MA),
+	PCOM_GPIO_CFG(87, 0, GPIO_INPUT, GPIO_NO_PULL, GPIO_16MA),
 	PCOM_GPIO_CFG(89, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_16MA)
 };
 
@@ -2154,6 +2156,7 @@ static int glacier_sensor_power_disable(char *power)
 static int glacier_sensor_vreg_on(void)
 {
 	int rc;
+/*
 	struct pm_gpio camera_analog_pw_on = {
 		.direction		= PM_GPIO_DIR_OUT,
 		.output_buffer	= PM_GPIO_OUT_BUF_CMOS,
@@ -2162,7 +2165,7 @@ static int glacier_sensor_vreg_on(void)
 		.out_strength	= PM_GPIO_STRENGTH_HIGH,
 		.function = PM_GPIO_FUNC_NORMAL,
 	};
-
+*/
 	pr_info("%s camera vreg on\n", __func__);
 
 	/*camera VCM power*/
@@ -2176,7 +2179,8 @@ static int glacier_sensor_vreg_on(void)
 
 
 	/*camera analog power*/
-	pm8xxx_gpio_config(GLACIER_CAM_A2V85_EN, &camera_analog_pw_on);
+	//pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(GLACIER_CAM_A2V85_EN), &camera_analog_pw_on);
+	gpio_set_value(PM8058_GPIO_PM_TO_SYS(GLACIER_CAM_A2V85_EN), 1);
 
 	/*camera digital power*/
 	if (system_rev >= 1)
@@ -2193,6 +2197,7 @@ static int glacier_sensor_vreg_off(void)
 {
 	int rc;
 	/*camera analog power*/
+/*
 	struct pm_gpio camera_analog_pw_off = {
 		.direction		= PM_GPIO_DIR_OUT,
 		.output_buffer	= PM_GPIO_OUT_BUF_CMOS,
@@ -2201,8 +2206,9 @@ static int glacier_sensor_vreg_off(void)
 		.out_strength	= PM_GPIO_STRENGTH_LOW,
 		.function = PM_GPIO_FUNC_NORMAL,
 	};
-
-	pm8xxx_gpio_config(GLACIER_CAM_A2V85_EN, &camera_analog_pw_off);
+	pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(GLACIER_CAM_A2V85_EN), &camera_analog_pw_off);
+*/
+	gpio_set_value(PM8058_GPIO_PM_TO_SYS(GLACIER_CAM_A2V85_EN), 0);
 	/*camera digital power*/
 	rc = glacier_sensor_power_disable("gp4");
 
@@ -2310,7 +2316,7 @@ static struct msm_camera_sensor_info msm_camera_sensor_s5k4e1gx_data = {
 	.flash_type     = MSM_CAMERA_FLASH_LED,
 	.resource       = msm_camera_resources,
 	.num_resources  = ARRAY_SIZE(msm_camera_resources),
-#ifdef CONFIG_ARCH_MSM_FLASHLIGHT,
+#ifdef CONFIG_ARCH_MSM_FLASHLIGHT
 	.flash_cfg	= &msm_camera_sensor_flash_cfg,
 #endif
 	.sensor_lc_disable = true, /* disable sensor lens correction */
@@ -3129,12 +3135,6 @@ static struct platform_device *devices[] __initdata = {
         &msm_lpa_device,
         &msm_aux_pcm_device,
 #endif
-#ifdef CONFIG_S5K4E1GX
-        &msm_camera_sensor_s5k4e1gx,
-#endif
-#ifdef CONFIG_MT9V113
-		&msm_camera_sensor_mt9v113, /* 2nd CAM */
-#endif
         &msm_device_adspdec,
         &qup_device_i2c,
 #if defined(CONFIG_MARIMBA_CORE) && \
@@ -3165,6 +3165,13 @@ static struct platform_device *devices[] __initdata = {
 #if defined(CONFIG_CRYPTO_DEV_QCEDEV) || \
                 defined(CONFIG_CRYPTO_DEV_QCEDEV_MODULE)
         &qcedev_device,
+#endif
+
+#ifdef CONFIG_S5K4E1GX
+        &msm_camera_sensor_s5k4e1gx,
+#endif
+#ifdef CONFIG_MT9V113
+		&msm_camera_sensor_mt9v113, /* 2nd CAM */
 #endif
 
         &htc_battery_pdev,
