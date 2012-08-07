@@ -21,24 +21,14 @@
 #include <linux/i2c.h>
 #include <linux/uaccess.h>
 #include <linux/miscdevice.h>
-
-#ifdef CONFIG_MSM_CAMERA_8X60
-#include <mach/camera-8x60.h>
-#elif defined(CONFIG_MSM_CAMERA_7X30)
-#include <mach/camera-7x30.h>
-#else
-#include <mach/camera.h>
-#endif
-
-#include <linux/wakelock.h>
-#include <asm/mach-types.h>
-
 #include <media/msm_camera_sensor.h>
 #include <mach/gpio.h>
-#include <mach/vreg.h>
+#include <mach/camera-7x30.h>
 #include "s5k4e1gx.h"
+#include <linux/wakelock.h>
 #include <linux/slab.h>
-
+#include <mach/vreg.h>
+#include <asm/mach-types.h>
 
 #define S5K4E1GX_REG_MODEL_ID			0x0000
 #define S5K4E1GX_MODEL_ID			    0x4E10
@@ -709,7 +699,7 @@ static int s5k4e1gx_probe_init_sensor(const struct msm_camera_sensor_info *data)
 		goto init_probe_fail;
 
 	/* Add Lens Correction Common Setting For Maverick*/
-    
+        /*
 	if (!sdata->sensor_lc_disable) {
 		pr_info("[CAM]sensor_lc_disable=%d\n", sdata->sensor_lc_disable);
 
@@ -718,7 +708,8 @@ static int s5k4e1gx_probe_init_sensor(const struct msm_camera_sensor_info *data)
 		if (rc < 0)
 			goto init_probe_fail;
 	}
-    
+        */
+
     /* Add analog settings For Maverick*/
 	rc = s5k4e1gx_i2c_read_b(s5k4e1gx_client->addr, S5K4E1GX_REVISION_ID, &evt_ver);
 	if (!(rc < 0)) {
@@ -2508,7 +2499,8 @@ static int __s5k4e1gx_probe(struct platform_device *pdev)
 static struct platform_driver msm_camera_driver = {
 	.probe = __s5k4e1gx_probe,
 	.driver = {
-    	.name = "s5k4e1gx",
+    .name = "msm_camera_s5k4e1gx",
+    .owner = THIS_MODULE,
 	},
 };
 
@@ -2527,6 +2519,7 @@ module_exit(s5k4e1gx_exit);
 
 MODULE_DESCRIPTION("camera sensor driver");
 MODULE_LICENSE("GPL");
+
 
 
 
