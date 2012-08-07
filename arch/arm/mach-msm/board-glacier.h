@@ -43,7 +43,7 @@
 #define MSM_PMEM_MDP_SIZE		0x02000000
 
 #define MSM_FB_BASE				0x2FD00000
-#define MSM_FB_SIZE				0x00300000
+#define MSM_FB_SIZE				0x00465000
 
 #define GLACIER_GPIO_WIFI_IRQ             147
 #define GLACIER_GPIO_WIFI_SHUTDOWN_N       39
@@ -83,6 +83,12 @@
 
 #define GLACIER_GPIO_PS_HOLD	(29)
 
+/* Panels */
+#define PANEL_OBSOLATE_0		0
+#define PANEL_SHARP			1
+#define PANEL_SONY			2
+
+/* LCD */
 #define GLACIER_LCD_2V85_EN            (22)
 #define GLACIER_MDDI_RSTz		(162)
 #define GLACIER_LCD_ID0               (124)

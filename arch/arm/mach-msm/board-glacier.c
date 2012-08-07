@@ -85,7 +85,6 @@
 #include <asm/mach/flash.h>
 #include <mach/vreg.h>
 #include <linux/platform_data/qcom_crypto_device.h>
-#include <mach/htc_fmtx_rfkill.h>
 #include <mach/htc_headset_mgr.h>
 #include <mach/htc_headset_gpio.h>
 #include <mach/htc_headset_pmic.h>
@@ -2351,18 +2350,6 @@ static struct platform_device glacier_rfkill = {
 };
 #endif
 
-static struct htc_fmtx_platform_data htc_fmtx_data = {
-	.switch_pin	= PM8058_GPIO_PM_TO_SYS(GLACIER_WFM_ANT_SW),
-};
-
-static struct platform_device glacier_fmtx_rfkill = {
-	.name = "htc_fmtx_rfkill",
-	.id = -1,
-	.dev = {
-		.platform_data = &htc_fmtx_data,
-	},
-};
-
 #ifdef CONFIG_MSM_SDIO_AL
 static struct msm_gpio mdm2ap_status = {
 	GPIO_CFG(77, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
@@ -3175,7 +3162,7 @@ static struct platform_device *devices[] __initdata = {
 #ifdef CONFIG_BT
         &glacier_rfkill,
 #endif
-		//&glacier_fmtx_rfkill,
+	//&glacier_fmtx_rfkill,
 #ifdef CONFIG_ARCH_MSM_FLASHLIGHT
         &glacier_flashlight_device,
 #endif
