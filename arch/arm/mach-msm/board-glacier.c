@@ -85,7 +85,7 @@
 #include <asm/mach/flash.h>
 #include <mach/vreg.h>
 #include <linux/platform_data/qcom_crypto_device.h>
-//#include <mach/htc_fmtx_rfkill.h>
+#include <mach/htc_fmtx_rfkill.h>
 #include <mach/htc_headset_mgr.h>
 #include <mach/htc_headset_gpio.h>
 #include <mach/htc_headset_pmic.h>
@@ -2333,6 +2333,7 @@ static struct msm_camera_sensor_info msm_camera_sensor_mt9v113_data = {
 	.resource = msm_camera_resources,
 	.num_resources = ARRAY_SIZE(msm_camera_resources),
 	.cam_select_pin = GLACIER_CLK_SWITCH,
+	.mirror_mode = true, /* for sensor upside down */
 };
 
 static struct platform_device msm_camera_sensor_mt9v113 = {
@@ -2349,7 +2350,7 @@ static struct platform_device glacier_rfkill = {
 	.id = -1,
 };
 #endif
-/*
+
 static struct htc_fmtx_platform_data htc_fmtx_data = {
 	.switch_pin	= PM8058_GPIO_PM_TO_SYS(GLACIER_WFM_ANT_SW),
 };
@@ -2361,7 +2362,7 @@ static struct platform_device glacier_fmtx_rfkill = {
 		.platform_data = &htc_fmtx_data,
 	},
 };
-*/
+
 #ifdef CONFIG_MSM_SDIO_AL
 static struct msm_gpio mdm2ap_status = {
 	GPIO_CFG(77, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
