@@ -20,7 +20,7 @@
 #define MSM_LINUX_SIZE1			0x0C000000
 #define MSM_LINUX_BASE2			0x20000000
 #define MSM_LINUX_SIZE2			0x0B900000
-#define MSM_MEM_256MB_OFFSET	0x10000000
+#define MSM_MEM_256MB_OFFSET		0x10000000
 
 #define MSM_GPU_MEM_BASE		0x00100000
 #define MSM_GPU_MEM_SIZE		0x00300000
@@ -141,22 +141,22 @@
 #define GLACIER_GPIO_BT_CHIP_WAKE      (50)
 #define GLACIER_GPIO_BT_SHUTDOWN_N     (38)
 
-#define GLACIER_GPIO_USB_ID1_PIN		(145)
-#define GLACIER_GPIO_DOCK_PIN			(37)
+#define GLACIER_GPIO_USB_ID1_PIN	(145)
+#define GLACIER_GPIO_DOCK_PIN		(37)
 
-#define GLACIER_CAM_PWD                (34)
-#define GLACIER_CAM_RST                (31)
-#define GLACIER_CLK_SWITCH             (23) /* camera select pin */
-#define GLACIER_CAM2_PWD			   (24)
-#define GLACIER_CAM2_RST			   (21)
+#define GLACIER_CAM_PWD			(34)
+#define GLACIER_CAM_RST			(31)
+#define GLACIER_CLK_SWITCH		(23) /* camera select pin */
+#define GLACIER_CAM2_PWD		(24)
+#define GLACIER_CAM2_RST		(21)
 
-#define GLACIER_OJ_RSTz                (36)
-#define GLACIER_OJ_MOTION              (26)
+#define GLACIER_OJ_RSTz			(36)
+#define GLACIER_OJ_MOTION		(26)
 
-#define GLACIER_GPIO_TP_ATT_N	(20)
+#define GLACIER_GPIO_TP_ATT_N		(20)
 
 /* EMMC */
-#define GLACIER_GPIO_EMMC_RST		   (88)
+#define GLACIER_GPIO_EMMC_RST		(88)
 
 /* PMIC GPIO */
 #define PMGPIO(x) (x-1)
@@ -165,7 +165,7 @@
 #define GLACIER_MENU_KEY		PMGPIO(12)
 #define GLACIER_BACK_KEY		PMGPIO(13)
 #define GLACIER_SEND_KEY		PMGPIO(14)
-#define GLACIER_GPIO_CHG_INT	PMGPIO(16)
+#define GLACIER_GPIO_CHG_INT		PMGPIO(16)
 #define GLACIER_AUD_SPK_ENO		PMGPIO(18)
 #define GLACIER_AUD_HP_EN		PMGPIO(19)
 #define GLACIER_PS_SHDN			PMGPIO(20)
@@ -175,7 +175,7 @@
 #define GLACIER_VOL_UP			PMGPIO(24)
 #define GLACIER_VOL_DN			PMGPIO(25)
 #define GLACIER_AUD_HP_DETz		PMGPIO(26)
-#define GLACIER_CAM_A2V85_EN    PMGPIO(33)/* ANALOG POWER of Glacier*/
+#define GLACIER_CAM_A2V85_EN    	PMGPIO(33)/* ANALOG POWER of Glacier*/
 #define GLACIER_CAM_STEP2		PMGPIO(35)
 #define GLACIER_CAM_STEP1		PMGPIO(36)
 #define GLACIER_WFM_ANT_SW		PMGPIO(37)
@@ -184,6 +184,8 @@
 /*display*/
 extern struct platform_device msm_device_mdp;
 extern struct platform_device msm_device_mddi0;
+extern int panel_type;
+extern unsigned long msm_fb_base;
 
 unsigned int glacier_get_engineerid(void);
 

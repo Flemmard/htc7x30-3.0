@@ -23,6 +23,7 @@
 #include <linux/clk.h>
 #include <linux/err.h>
 #include <linux/gpio.h>
+#include <linux/workqueue.h>
 
 #include <asm/io.h>
 #include <asm/mach-types.h>
@@ -30,10 +31,12 @@
 #include <mach/msm_iomap-7x30.h>
 #include <mach/vreg.h>
 #include <mach/panel_id.h>
+#include <mach/debug_display.h>
 
 #include "../board-glacier.h"
 #include "../devices.h"
 #include "../proc_comm.h"
+#include "../../../../drivers/video/msm_7x30/mdp_hw.h"
 
 #if 1
 #define B(s...) printk(s)
@@ -41,15 +44,7 @@
 #define B(s...) do {} while(0)
 #endif
 
-struct vreg {
-        const char *name;
-        unsigned id;
-};
-
-struct vreg *vreg_ldo19, *vreg_ldo20;
-struct vreg *vreg_ldo12;
-
-static struct clk *axi_clk;
+#define DEFAULT_BRIGHTNESS 100
 
 #define PWM_USER_DEF	 		143
 #define PWM_USER_MIN			30
@@ -64,7 +59,15 @@ static struct clk *axi_clk;
 #define PWM_SONY_MIN			13
 #define PWM_SONY_MAX			255
 
-#define DEFAULT_BRIGHTNESS 	PWM_USER_DEF
+static struct clk *axi_clk;
+
+struct vreg {
+        const char *name;
+        unsigned id;
+};
+
+struct vreg *vreg_ldo19, *vreg_ldo20;
+struct vreg *vreg_ldo12;
 
 static struct cabc_t {
 	struct led_classdev lcd_backlight;
@@ -74,15 +77,19 @@ static struct cabc_t {
 	int last_shrink_br;
 } cabc;
 
+int color_enhance_switch = 1;
+
 enum {
 	GATE_ON = 1 << 0,
+	CABC_STATE,
 };
 
 enum led_brightness brightness_value = DEFAULT_BRIGHTNESS;
 
-/* use one flag to have better backlight on/off performance */
-static int glacier_set_dim = 1;
+static struct workqueue_struct *glacier_cabc_wq;
+static struct delayed_work glacier_cabc_work;
 
+extern unsigned long msm_fb_base;
 
 static int glacier_shrink_pwm(int brightness, int user_def,
 		int user_min, int user_max, int panel_def,
@@ -111,6 +118,13 @@ static int glacier_shrink_pwm(int brightness, int user_def,
         return brightness;
 }
 
+static void glacier_cabc_open(struct work_struct *w)
+{
+	struct msm_mddi_client_data *client = cabc.client_data;
+	PR_DISP_INFO("Open CABC...");
+	client->remote_write(client, 0x2C, 0x5300);
+}
+
 static void glacier_set_brightness(struct led_classdev *led_cdev,
 				enum led_brightness val)
 {
@@ -129,32 +143,20 @@ static void glacier_set_brightness(struct led_classdev *led_cdev,
 				PWM_USER_MIN, PWM_USER_MAX, PWM_SONY_DEF,
 				PWM_SONY_MIN, PWM_SONY_MAX);
 
-	if (!client) {
-		pr_info("null mddi client");
-		return;
-	}
-
-	if (cabc.last_shrink_br == shrink_br) {
-		pr_info("[BKL] identical shrink_br");
-		return;
-	}
-
 	mutex_lock(&cabc.lock);
-
-	if (glacier_set_dim == 1) {
-		client->remote_write(client, 0x2C, 0x5300);
-		/* we dont need set dim again */
-		glacier_set_dim = 0;
-	}
 	client->remote_write(client, 0x00, 0x5500);
 	client->remote_write(client, shrink_br, 0x5100);
+
+	if (cabc.last_shrink_br == 0 && shrink_br)
+		/* 1ms is not enough, more than 5ms is okay */
+		queue_delayed_work(glacier_cabc_wq, &glacier_cabc_work, 100);
 
 	/* Update the last brightness */
 	cabc.last_shrink_br = shrink_br;
 	brightness_value = val;
 	mutex_unlock(&cabc.lock);
 
-	printk(KERN_INFO "set brightness to %d\n", shrink_br);
+	PR_DISP_INFO("[BKL] set brightness to %d\n", shrink_br);
 }
 
 static enum led_brightness
@@ -168,27 +170,139 @@ static void glacier_backlight_switch(int on)
 	enum led_brightness val;
 
 	if (on) {
-		printk(KERN_DEBUG "turn on backlight\n");
+		PR_DISP_DEBUG("[BKL] turn on backlight\n");
 		set_bit(GATE_ON, &cabc.status);
 		val = cabc.lcd_backlight.brightness;
-		/* LED core uses get_brightness for default value
-		 * If the physical layer is not ready, we should
-		 * not count on it */
+		/*LED core uses get_brightness for default value
+		If the physical layer is not ready, we should not count on it*/
 		if (val == 0)
 			val = DEFAULT_BRIGHTNESS;
 		glacier_set_brightness(&cabc.lcd_backlight, val);
-		/* set next backlight value with dim */
-		glacier_set_dim = 1;
 	} else {
 		clear_bit(GATE_ON, &cabc.status);
 		cabc.last_shrink_br = 0;
 	}
 }
+static int
+glacier_cabc_switch(int on)
+{
+	struct msm_mddi_client_data *client = cabc.client_data;
+
+	if (on) {
+		printk(KERN_DEBUG "turn on CABC\n");
+		set_bit(CABC_STATE, &cabc.status);
+		mutex_lock(&cabc.lock);
+		client->remote_write(client, 0x03, 0x5500);
+		client->remote_write(client, 0x2C, 0x5300);
+		mutex_unlock(&cabc.lock);
+	} else {
+		printk(KERN_DEBUG "turn off CABC\n");
+		clear_bit(CABC_STATE, &cabc.status);
+		mutex_lock(&cabc.lock);
+		client->remote_write(client, 0x00, 0x5500);
+		client->remote_write(client, 0x2C, 0x5300);
+		mutex_unlock(&cabc.lock);
+	}
+	return 1;
+}
+
+static ssize_t
+auto_backlight_show(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t
+auto_backlight_store(struct device *dev, struct device_attribute *attr,
+					const char *buf, size_t count);
+#define CABC_ATTR(name) __ATTR(name, 0644, auto_backlight_show, auto_backlight_store)
+static struct device_attribute auto_attr = CABC_ATTR(cabc);
+
+static ssize_t
+auto_backlight_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	int i = 0;
+
+	i += scnprintf(buf + i, PAGE_SIZE - 1, "%d\n",
+				test_bit(CABC_STATE, &cabc.status));
+	return i;
+}
+
+static ssize_t
+auto_backlight_store(struct device *dev, struct device_attribute *attr,
+	const char *buf, size_t count)
+{
+	int rc;
+	unsigned long res;
+
+	rc = strict_strtoul(buf, 10, &res);
+	if (rc) {
+		printk(KERN_ERR "invalid parameter, %s %d\n", buf, rc);
+		count = -EINVAL;
+		goto err_out;
+	}
+
+	if (glacier_cabc_switch(!!res))
+		count = -EIO;
+
+err_out:
+	return count;
+}
+static int
+glacier_ce_switch(int on)
+{
+	struct msm_mddi_client_data *client = cabc.client_data;
+
+	if (on) {
+		printk(KERN_DEBUG "turn on color enhancement\n");
+		client->remote_write(client, 0x10, 0xb400);
+	} else {
+		printk(KERN_DEBUG "turn off color enhancement\n");
+		client->remote_write(client, 0x00, 0xb400);
+	}
+	color_enhance_switch = on;
+	return 1;
+}
+
+static ssize_t
+ce_switch_show(struct device *dev, struct device_attribute *attr, char *buf);
+static ssize_t
+ce_switch_store(struct device *dev, struct device_attribute *attr,
+					const char *buf, size_t count);
+#define Color_enhance_ATTR(name) __ATTR(name, 0644, ce_switch_show, ce_switch_store)
+static struct device_attribute ce_attr = Color_enhance_ATTR(color_enhance);
+
+static ssize_t
+ce_switch_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	int i = 0;
+
+	i += scnprintf(buf + i, PAGE_SIZE - 1, "%d\n",
+				color_enhance_switch);
+	return i;
+}
+
+static ssize_t
+ce_switch_store(struct device *dev, struct device_attribute *attr,
+	const char *buf, size_t count)
+{
+	int rc;
+	unsigned long res;
+
+	rc = strict_strtoul(buf, 10, &res);
+	if (rc) {
+		printk(KERN_ERR "invalid parameter, %s %d\n", buf, rc);
+		count = -EINVAL;
+		goto err_out;
+	}
+
+	if (glacier_ce_switch(!!res))
+		count = -EIO;
+
+err_out:
+	return count;
+}
 
 static int glacier_backlight_probe(struct platform_device *pdev)
 {
 	int err = -EIO;
-	B(KERN_DEBUG "%s(%d)\n", __func__, __LINE__);
+	PR_DISP_DEBUG("%s\n", __func__);
 
 	mutex_init(&cabc.lock);
 	cabc.last_shrink_br = 0;
@@ -200,17 +314,25 @@ static int glacier_backlight_probe(struct platform_device *pdev)
 	if (err)
 		goto err_register_lcd_bl;
 
-	return 0;
-#if 0
+	err = device_create_file(cabc.lcd_backlight.dev, &ce_attr);
+	if (err)
+		goto err_ce_out;
+
+
 	err = device_create_file(cabc.lcd_backlight.dev, &auto_attr);
 	if (err)
-		goto err_out;
+		goto err_auto_out;
+
+	glacier_cabc_wq = alloc_ordered_workqueue("cabc_wq", 0);
+	INIT_DELAYED_WORK(&(glacier_cabc_work), glacier_cabc_open);
 
 	return 0;
 
-err_out:
+err_auto_out:
 		device_remove_file(&pdev->dev, &auto_attr);
-#endif
+
+err_ce_out:
+		device_remove_file(&pdev->dev, &ce_attr);
 
 err_register_lcd_bl:
 	led_classdev_unregister(&cabc.lcd_backlight);
@@ -224,10 +346,7 @@ static struct resource resources_msm_fb[] = {
 		.flags = IORESOURCE_MEM,
 	},
 };
-/*
-static struct vreg *vreg_lcd_2v8;
-static struct vreg *vreg_lcd_1v8;
-*/
+
 #define REG_WAIT (0xffff)
 
 struct nov_regs {
@@ -534,14 +653,16 @@ static struct nov_regs sony_init_seq[] = {
 	{0x0480, 0x0063},
 };
 
-
 static int
 glacier_mddi_init(struct msm_mddi_bridge_platform_data *bridge_data,
 		     struct msm_mddi_client_data *client_data)
 {
-	int i = 0, array_size;
+	int i = 0, array_size = 0;
 	unsigned reg, val;
-	struct nov_regs *init_seq;
+	struct nov_regs *init_seq = NULL;
+
+	PR_DISP_INFO("%s(0x%x)\n", __func__, panel_type);
+	client_data->auto_hibernate(client_data, 0);
 
 	if (panel_type == PANEL_SONY) {
 		init_seq = sony_init_seq;
@@ -562,6 +683,16 @@ glacier_mddi_init(struct msm_mddi_bridge_platform_data *bridge_data,
 				client_data->send_powerdown(client_data);
 		}
 	}
+	if (color_enhance_switch == 0)
+		client_data->remote_write(client_data, 0x00, 0xb400);
+
+	if (test_bit(CABC_STATE, &cabc.status) == 0)
+		glacier_cabc_switch(0);
+	else
+		set_bit(CABC_STATE, &cabc.status);
+
+	client_data->auto_hibernate(client_data, 1);
+
 	if(axi_clk)
 		clk_set_rate(axi_clk, 0);
 
@@ -572,7 +703,7 @@ static int
 glacier_mddi_uninit(struct msm_mddi_bridge_platform_data *bridge_data,
 			struct msm_mddi_client_data *client_data)
 {
-	B(KERN_DEBUG "%s(%d)\n", __func__, __LINE__);
+	PR_DISP_DEBUG("%s\n", __func__);
 	return 0;
 }
 
@@ -580,14 +711,23 @@ static int
 glacier_panel_blank(struct msm_mddi_bridge_platform_data *bridge_data,
 			struct msm_mddi_client_data *client_data)
 {
-	B(KERN_DEBUG "%s(%d)\n", __func__, __LINE__);
+	PR_DISP_DEBUG("%s\n", __func__);
+
 	client_data->auto_hibernate(client_data, 0);
-
-	client_data->remote_write(client_data, 0, 0x2800);
-	client_data->remote_write(client_data, 0x24, 0x5300);
-	glacier_backlight_switch(LED_OFF);
-	client_data->remote_write(client_data, 0, 0x1000);
-
+	/* stop running cabc work */
+	cancel_delayed_work_sync(&glacier_cabc_work);
+	if (panel_type == PANEL_ID_PRIMO_SONY) {
+		client_data->remote_write(client_data, 0x0, 0x5300);
+		glacier_backlight_switch(LED_OFF);
+		client_data->remote_write(client_data, 0, 0x2800);
+		client_data->remote_write(client_data, 0, 0x1000);
+	} else {
+		client_data->remote_write(client_data, 0x0, 0x5300);
+		glacier_backlight_switch(LED_OFF);
+		client_data->remote_write(client_data, 0, 0x2800);
+		hr_msleep(10);
+		client_data->remote_write(client_data, 0, 0x1000);
+	}
 	client_data->auto_hibernate(client_data, 1);
 	return 0;
 }
@@ -596,7 +736,8 @@ static int
 glacier_panel_unblank(struct msm_mddi_bridge_platform_data *bridge_data,
 			struct msm_mddi_client_data *client_data)
 {
-	B(KERN_DEBUG "%s +\n", __func__);
+	PR_DISP_DEBUG("%s\n", __func__);
+
 	client_data->auto_hibernate(client_data, 0);
 	/* HTC, Add 50 ms delay for stability of driver IC at high temperature */
 	hr_msleep(50);
@@ -626,7 +767,6 @@ static struct msm_mddi_bridge_platform_data novatec_client_data = {
 	},
 	.panel_conf = {
 		.caps = MSMFB_CAP_CABC,
-		.vsync_gpio = 30,
 	},
 };
 
@@ -634,6 +774,7 @@ static void
 mddi_novatec_power(struct msm_mddi_client_data *client_data, int on)
 {
 	unsigned pulldown = 1;
+	PR_DISP_DEBUG("%s(%s)\n", __func__, on?"on":"off");
 
 	if (panel_type == 0) {
 		if (on) {
@@ -714,7 +855,7 @@ mddi_novatec_power(struct msm_mddi_client_data *client_data, int on)
 
 static void panel_nov_fixup(uint16_t *mfr_name, uint16_t *product_code)
 {
-	printk("mddi fixup\n");
+	PR_DISP_DEBUG("mddi fixup\n");
 	*mfr_name = 0xb9f6;
 	*product_code = 0x5560;
 }
@@ -756,6 +897,7 @@ static struct msm_mdp_platform_data mdp_pdata_sharp = {
 #else
 	.overrides = MSM_MDP_PANEL_FLIP_UD | MSM_MDP_PANEL_FLIP_LR,
 #endif
+	.color_format = MSM_MDP_OUT_IF_FMT_RGB888,
 #ifdef CONFIG_MDP4_HW_VSYNC
        .xres = 480,
        .yres = 800,
@@ -771,6 +913,7 @@ static struct msm_mdp_platform_data mdp_pdata_common = {
 #else
 	.overrides = MSM_MDP4_MDDI_DMA_SWITCH,
 #endif
+	.color_format = MSM_MDP_OUT_IF_FMT_RGB888,
 #ifdef CONFIG_MDP4_HW_VSYNC
        .xres = 480,
        .yres = 800,
@@ -784,7 +927,7 @@ int __init glacier_init_panel(void)
 {
 	int rc;
 
-	B(KERN_INFO "%s: enter. panel type %d\n", __func__, panel_type);
+	PR_DISP_INFO("%s: enter.\n", __func__);
 
 	/* turn on L12 for OJ. Note: must before L19 */
 	vreg_ldo12 = vreg_get(NULL, "gp9");
@@ -795,7 +938,7 @@ int __init glacier_init_panel(void)
 	vreg_ldo20 = vreg_get(NULL, "gp13");
 
 	if (IS_ERR(vreg_ldo20)) {
-		pr_err("%s: gp13 vreg get failed (%ld)\n",
+		PR_DISP_ERR("%s: gp13 vreg get failed (%ld)\n",
 			__func__, PTR_ERR(vreg_ldo20));
 		return -1;
 	}
@@ -803,21 +946,21 @@ int __init glacier_init_panel(void)
 	vreg_ldo19 = vreg_get(NULL, "wlan2");
 
 	if (IS_ERR(vreg_ldo19)) {
-		pr_err("%s: wlan2 vreg get failed (%ld)\n",
+		PR_DISP_ERR("%s: wlan2 vreg get failed (%ld)\n",
 		       __func__, PTR_ERR(vreg_ldo19));
 		return -1;
 	}
 
 	rc = vreg_set_level(vreg_ldo20, 3000);
 	if (rc) {
-		pr_err("%s: vreg LDO20 set level failed (%d)\n",
+		PR_DISP_ERR("%s: vreg LDO20 set level failed (%d)\n",
 			__func__, rc);
 		return rc;
 	}
 
 	rc = vreg_set_level(vreg_ldo19, 1800);
 	if (rc) {
-		pr_err("%s: vreg LDO19 set level failed (%d)\n",
+		PR_DISP_ERR("%s: vreg LDO19 set level failed (%d)\n",
 		       __func__, rc);
 		return rc;
 	}
@@ -844,7 +987,7 @@ int __init glacier_init_panel(void)
 
 	axi_clk = clk_get(NULL, "ebi1_mddi_clk");
 	if (IS_ERR(axi_clk)) {
-		pr_err("%s: failed to get axi clock\n", __func__);
+		PR_DISP_ERR("%s: failed to get axi clock\n", __func__);
 		return PTR_ERR(axi_clk);
 	}
 
@@ -857,5 +1000,8 @@ int __init glacier_init_panel(void)
 	if (rc)
 		return rc;
 
+	set_bit(CABC_STATE, &cabc.status);
+
 	return 0;
 }
+
