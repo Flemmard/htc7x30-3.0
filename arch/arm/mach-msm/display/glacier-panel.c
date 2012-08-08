@@ -633,83 +633,62 @@ static struct msm_mddi_bridge_platform_data novatec_client_data = {
 static void
 mddi_novatec_power(struct msm_mddi_client_data *client_data, int on)
 {
-	unsigned pulldown = 1;
+	int rc;
+	unsigned config;	
+	if (on) {
+		if(axi_clk)
+			clk_set_rate(axi_clk, 192000000);
 
-	if (panel_type == 0) {
-		if (on) {
-			if(axi_clk)
-				clk_set_rate(axi_clk, 192000000);
+		config = PCOM_GPIO_CFG(GLACIER_LCD_2V85_EN, 1, GPIO_INPUT, GPIO_PULL_DOWN, GPIO_2MA);
+		rc = msm_proc_comm(PCOM_RPC_GPIO_TLMM_CONFIG_EX, &config, 0);
+		config = PCOM_GPIO_CFG(GLACIER_LCD_ID2, 0, GPIO_INPUT, GPIO_NO_PULL, GPIO_2MA);
+		rc = msm_proc_comm(PCOM_RPC_GPIO_TLMM_CONFIG_EX, &config, 0);
+		config = PCOM_GPIO_CFG(GLACIER_LCD_ID1, 0, GPIO_INPUT, GPIO_NO_PULL, GPIO_2MA);
+		rc = msm_proc_comm(PCOM_RPC_GPIO_TLMM_CONFIG_EX, &config, 0);
+		config = PCOM_GPIO_CFG(GLACIER_LCD_ID0, 0, GPIO_INPUT, GPIO_NO_PULL, GPIO_2MA);
+		rc = msm_proc_comm(PCOM_RPC_GPIO_TLMM_CONFIG_EX, &config, 0);
 
-			vreg_enable(vreg_ldo20);
-			hr_msleep(5);
-			vreg_disable(vreg_ldo20);
-			hr_msleep(55);
-			gpio_set_value(GLACIER_LCD_2V85_EN, 1);
-			/* OJ_2V85*/
-			vreg_enable(vreg_ldo12);
-			hr_msleep(1);
-			vreg_enable(vreg_ldo20);
-			hr_msleep(2);
-			vreg_enable(vreg_ldo19);
-			hr_msleep(2);
-			gpio_set_value(GLACIER_MDDI_RSTz, 1);
-			hr_msleep(2);
-			gpio_set_value(GLACIER_MDDI_RSTz, 0);
-			hr_msleep(2);
-			gpio_set_value(GLACIER_MDDI_RSTz, 1);
-			hr_msleep(65);
-		} else {
-			hr_msleep(130);
-			gpio_set_value(GLACIER_MDDI_RSTz, 0);
-			hr_msleep(15);
-			vreg_disable(vreg_ldo20);
-			hr_msleep(15);
-			vreg_disable(vreg_ldo19);
-			/* OJ_2V85*/
-			vreg_disable(vreg_ldo12);
-			gpio_set_value(GLACIER_LCD_2V85_EN, 0);
-			msm_proc_comm(PCOM_VREG_PULLDOWN, &pulldown, &vreg_ldo20->id);
-			msm_proc_comm(PCOM_VREG_PULLDOWN, &pulldown, &vreg_ldo19->id);
-			msm_proc_comm(PCOM_VREG_PULLDOWN, &pulldown, &vreg_ldo12->id);
-		}
+		vreg_enable(vreg_ldo20);
+		hr_msleep(5);
+		vreg_disable(vreg_ldo20);
+		hr_msleep(55);
+		//gpio_set_value(GLACIER_LCD_2V85_EN, 1);
+		/* OJ_2V85*/
+		vreg_enable(vreg_ldo12);
+		hr_msleep(1);
+		vreg_enable(vreg_ldo20);
+		hr_msleep(2);
+		vreg_enable(vreg_ldo19);
+		hr_msleep(2);
+		gpio_set_value(GLACIER_MDDI_RSTz, 1);
+		hr_msleep(2);
+		gpio_set_value(GLACIER_MDDI_RSTz, 0);
+		hr_msleep(2);
+		gpio_set_value(GLACIER_MDDI_RSTz, 1);
+		hr_msleep(65);
+
 	} else {
-		if (on) {
-			if(axi_clk)
-				clk_set_rate(axi_clk, 192000000);
+		/* Since both panel off sequences were identical I removed the if statement */
+		hr_msleep(130);
+		gpio_set_value(GLACIER_MDDI_RSTz, 0);
+		hr_msleep(15);
+		vreg_disable(vreg_ldo20);
+		hr_msleep(15);
+		vreg_disable(vreg_ldo19);
+		/* OJ_2V85*/
+		vreg_disable(vreg_ldo12);
+		//gpio_set_value(GLACIER_LCD_2V85_EN, 0);
 
-			vreg_enable(vreg_ldo20);
-			hr_msleep(5);
-			vreg_disable(vreg_ldo20);
-			hr_msleep(55);
-			gpio_set_value(GLACIER_LCD_2V85_EN, 1);
-			/* OJ_2V85*/
-			vreg_enable(vreg_ldo12);
-			hr_msleep(1);
-			vreg_enable(vreg_ldo20);
-			hr_msleep(2);
-			vreg_enable(vreg_ldo19);
-			hr_msleep(2);
-			gpio_set_value(GLACIER_MDDI_RSTz, 1);
-			hr_msleep(2);
-			gpio_set_value(GLACIER_MDDI_RSTz, 0);
-			hr_msleep(2);
-			gpio_set_value(GLACIER_MDDI_RSTz, 1);
-			hr_msleep(65);
-		} else {
-			hr_msleep(130);
-			gpio_set_value(GLACIER_MDDI_RSTz, 0);
-			hr_msleep(15);
-			vreg_disable(vreg_ldo20);
-			hr_msleep(15);
-			vreg_disable(vreg_ldo19);
-			/* OJ_2V85*/
-			vreg_disable(vreg_ldo12);
-			gpio_set_value(GLACIER_LCD_2V85_EN, 0);
-			msm_proc_comm(PCOM_VREG_PULLDOWN, &pulldown, &vreg_ldo20->id);
-			msm_proc_comm(PCOM_VREG_PULLDOWN, &pulldown, &vreg_ldo19->id);
-			msm_proc_comm(PCOM_VREG_PULLDOWN, &pulldown, &vreg_ldo12->id);
-		}
+		config = PCOM_GPIO_CFG(GLACIER_LCD_2V85_EN, 0, GPIO_OUTPUT, GPIO_PULL_DOWN, GPIO_2MA);
+		rc = msm_proc_comm(PCOM_RPC_GPIO_TLMM_CONFIG_EX, &config, 0);
+		config = PCOM_GPIO_CFG(GLACIER_LCD_ID2, 0, GPIO_OUTPUT, GPIO_PULL_DOWN, GPIO_2MA);
+		rc = msm_proc_comm(PCOM_RPC_GPIO_TLMM_CONFIG_EX, &config, 0);
+		config = PCOM_GPIO_CFG(GLACIER_LCD_ID1, 0, GPIO_OUTPUT, GPIO_PULL_DOWN, GPIO_2MA);
+		rc = msm_proc_comm(PCOM_RPC_GPIO_TLMM_CONFIG_EX, &config, 0);
+		config = PCOM_GPIO_CFG(GLACIER_LCD_ID0, 0, GPIO_OUTPUT, GPIO_PULL_DOWN, GPIO_2MA);
+		rc = msm_proc_comm(PCOM_RPC_GPIO_TLMM_CONFIG_EX, &config, 0);
 	}
+
 }
 
 static void panel_nov_fixup(uint16_t *mfr_name, uint16_t *product_code)
