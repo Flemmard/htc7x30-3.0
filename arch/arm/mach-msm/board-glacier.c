@@ -85,7 +85,6 @@
 #include <asm/mach/flash.h>
 #include <mach/vreg.h>
 #include <linux/platform_data/qcom_crypto_device.h>
-//#include <mach/htc_fmtx_rfkill.h>
 #include <mach/htc_headset_mgr.h>
 #include <mach/htc_headset_gpio.h>
 #include <mach/htc_headset_pmic.h>
@@ -361,7 +360,7 @@ static struct platform_device capella_cm3602 = {
 
 /* HTC_HEADSET_GPIO Driver */
 static struct htc_headset_gpio_platform_data htc_headset_gpio_data = {
-	.hpin_gpio		= 0,
+	.hpin_gpio		= PM8058_GPIO_PM_TO_SYS(GLACIER_AUD_HP_DETz),
 	.key_enable_gpio	= 0,
 	.mic_select_gpio	= GLACIER_AUD_MICPATH_SEL,
 };
@@ -393,8 +392,9 @@ static struct platform_device htc_headset_microp = {
 
 /* HTC_HEADSET_PMIC Driver */
 static struct htc_headset_pmic_platform_data htc_headset_pmic_data = {
-	.hpin_gpio	= PM8058_GPIO_PM_TO_SYS(GLACIER_AUD_HP_DETz),
-	.hpin_irq	= MSM_GPIO_TO_INT(PM8058_GPIO_PM_TO_SYS(GLACIER_AUD_HP_DETz)),
+	.hpin_gpio	= 0,
+	.hpin_irq	= MSM_GPIO_TO_INT(
+			  PM8058_GPIO_PM_TO_SYS(GLACIER_AUD_HP_DETz)),
 };
 
 static struct platform_device htc_headset_pmic = {
@@ -432,24 +432,6 @@ static struct microp_function_config microp_functions[] = {
 	},
 };
 
-static struct microp_led_config up_led_config[] = {
-	{
-		.name = "amber",
-		.type = LED_RGB,
-	},
-	{
-		.name = "green",
-		.type = LED_RGB,
-	},
-	{
-		.name = "button-backlight",
-		.type = LED_PWM,
-		.led_pin = 1 << 0,
-		.init_value = 0,
-		.fade_time = 5,
-	},
-};
-
 static struct microp_function_config microp_lightsensor_function = {
 	.name = "light_sensor",
 	.category = MICROP_FUNCTION_LSENSOR,
@@ -465,9 +447,27 @@ static struct lightsensor_platform_data lightsensor_data = {
 	.irq = MSM_uP_TO_INT(9),
 };
 
+static struct microp_led_config led_config[] = {
+	{
+		.name = "amber",
+		.type = LED_RGB,
+	},
+	{
+		.name = "green",
+		.type = LED_RGB,
+	},
+	{
+		.name = "button-backlight",
+		.type = LED_PWM,
+		.led_pin = 1 << 2,
+		.init_value = 0xFF,
+		.fade_time = 5,
+	},
+};
+
 static struct microp_led_platform_data microp_leds_data = {
-	.num_leds	= ARRAY_SIZE(up_led_config),
-	.led_config	= up_led_config,
+	.num_leds = ARRAY_SIZE(led_config),
+	.led_config = led_config,
 };
 
 static struct bma150_platform_data microp_g_sensor_pdata = {
@@ -743,7 +743,7 @@ static int pm8058_gpios_init(void)
 		.direction      = PM_GPIO_DIR_IN,
 		.output_buffer  = 0,
 		.output_value   = 0,
-		.pull           = PM_GPIO_PULL_NO,
+		.pull           = PM_GPIO_PULL_UP_31P5,
 		.vin_sel        = PM8058_GPIO_VIN_S3,
 		.out_strength   = 0,
 		.function       = PM_GPIO_FUNC_NORMAL,
@@ -1572,6 +1572,7 @@ static void __init aux_pcm_gpio_init(void)
 	config_gpio_table(aux_pcm_gpio_off,
 		ARRAY_SIZE(aux_pcm_gpio_off));
 }
+
 #ifdef CONFIG_VP_A1026
 static uint32_t audience_gpio_on_table[] = {
 	PCOM_GPIO_CFG(GLACIER_AUD_A1026_INT, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_8MA),
@@ -2040,7 +2041,6 @@ static struct platform_device msm_vpe_device = {
 #endif
 
 #ifdef CONFIG_MSM_CAMERA
-
 static struct i2c_board_info msm_camera_boardinfo[] __initdata = {
 #ifdef CONFIG_S5K4E1GX
 	{
@@ -2154,7 +2154,6 @@ static int glacier_sensor_power_disable(char *power)
 static int glacier_sensor_vreg_on(void)
 {
 	int rc;
-
 	struct pm_gpio camera_analog_pw_on = {
 		.direction		= PM_GPIO_DIR_OUT,
 		.output_buffer	= PM_GPIO_OUT_BUF_CMOS,
@@ -2175,9 +2174,8 @@ static int glacier_sensor_vreg_on(void)
 	/*camera IO power*/
 	rc = glacier_sensor_power_enable("gp2", 1800);
 
-
 	/*camera analog power*/
-	pm8xxx_gpio_config(GLACIER_CAM_A2V85_EN, &camera_analog_pw_on);
+	pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(GLACIER_CAM_A2V85_EN), &camera_analog_pw_on);
 
 	/*camera digital power*/
 	if (system_rev >= 1)
@@ -2193,7 +2191,6 @@ static int glacier_sensor_vreg_on(void)
 static int glacier_sensor_vreg_off(void)
 {
 	int rc;
-	/*camera analog power*/
 	struct pm_gpio camera_analog_pw_off = {
 		.direction		= PM_GPIO_DIR_OUT,
 		.output_buffer	= PM_GPIO_OUT_BUF_CMOS,
@@ -2203,7 +2200,11 @@ static int glacier_sensor_vreg_off(void)
 		.function = PM_GPIO_FUNC_NORMAL,
 	};
 
-	pm8xxx_gpio_config(GLACIER_CAM_A2V85_EN, &camera_analog_pw_off);
+	pr_info("%s camera vreg off\n", __func__);
+
+	/*camera analog power*/
+	pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(GLACIER_CAM_A2V85_EN), &camera_analog_pw_off);
+
 	/*camera digital power*/
 	rc = glacier_sensor_power_disable("gp4");
 
@@ -2212,6 +2213,7 @@ static int glacier_sensor_vreg_off(void)
 
 	/*camera VCM power*/
 	rc = glacier_sensor_power_disable("wlan");
+
 	return rc;
 }
 
@@ -2298,9 +2300,8 @@ static void glacier_mt9v113_clk_switch(void){
 static struct msm_camera_sensor_info msm_camera_sensor_s5k4e1gx_data = {
 	.sensor_name    = "s5k4e1gx",
 	.sensor_reset   = GLACIER_CAM_RST,
-	.vcm_pwd        = GLACIER_CAM_PWD,
+	.vcm_pwd     = GLACIER_CAM_PWD,
 	.camera_clk_switch	= glacier_s5k4e1gx_clk_switch,
-/*	.camera_analog_pwd = "gp8",*/
 	.camera_io_pwd = "gp2",
 	.camera_vcm_pwd = "wlan",
 	.camera_digital_pwd = "gp4",
@@ -2309,12 +2310,11 @@ static struct msm_camera_sensor_info msm_camera_sensor_s5k4e1gx_data = {
 	.camera_power_off = glacier_sensor_vreg_off,
 	.pdata          = &msm_camera_device_data,
 	.flash_type     = MSM_CAMERA_FLASH_LED,
-#ifdef CONFIG_ARCH_MSM_FLASHLIGHT
-	.flash_cfg      = &msm_camera_sensor_flash_cfg,
-#endif
-	.sensor_platform_info = NULL,
 	.resource       = msm_camera_resources,
 	.num_resources  = ARRAY_SIZE(msm_camera_resources),
+#ifdef CONFIG_ARCH_MSM_FLASHLIGHT
+	.flash_cfg	= &msm_camera_sensor_flash_cfg,
+#endif
 	.sensor_lc_disable = true, /* disable sensor lens correction */
 	.cam_select_pin = GLACIER_CLK_SWITCH,
 };
@@ -2338,6 +2338,7 @@ static struct msm_camera_sensor_info msm_camera_sensor_mt9v113_data = {
 	.resource = msm_camera_resources,
 	.num_resources = ARRAY_SIZE(msm_camera_resources),
 	.cam_select_pin = GLACIER_CLK_SWITCH,
+	.mirror_mode = true, /* for sensor upside down */
 };
 
 static struct platform_device msm_camera_sensor_mt9v113 = {
@@ -2354,19 +2355,7 @@ static struct platform_device glacier_rfkill = {
 	.id = -1,
 };
 #endif
-/*
-static struct htc_fmtx_platform_data htc_fmtx_data = {
-	.switch_pin	= GLACIER_WFM_ANT_SW,
-};
 
-static struct platform_device glacier_fmtx_rfkill = {
-	.name = "htc_fmtx_rfkill",
-	.id = -1,
-	.dev = {
-		.platform_data = &htc_fmtx_data,
-	},
-};
-*/
 #ifdef CONFIG_MSM_SDIO_AL
 static struct msm_gpio mdm2ap_status = {
 	GPIO_CFG(77, 0, GPIO_CFG_INPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
@@ -2901,7 +2890,7 @@ static struct mmc_platform_data msm7x30_sdc4_data = {
 
 #ifdef CONFIG_MMC_MSM_CARD_HW_DETECTION
 	.status      = msm7x30_sdcc_slot_status,
-	.status_irq  = PM8058_GPIO_IRQ(PMIC8058_IRQ_BASE, GLACIER_GPIO_SDMC_CD_N),
+	.status_irq  = PM8058_GPIO_IRQ(PMIC8058_IRQ_BASE, GLACIER_SDMC_CD_N),
 	.irq_flags   = IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
 #endif
 
@@ -3131,12 +3120,6 @@ static struct platform_device *devices[] __initdata = {
         &msm_lpa_device,
         &msm_aux_pcm_device,
 #endif
-#ifdef CONFIG_S5K4E1GX
-        &msm_camera_sensor_s5k4e1gx,
-#endif
-#ifdef CONFIG_MT9V113
-	&msm_camera_sensor_mt9v113, /* 2nd CAM */
-#endif
         &msm_device_adspdec,
         &qup_device_i2c,
 #if defined(CONFIG_MARIMBA_CORE) && \
@@ -3169,6 +3152,13 @@ static struct platform_device *devices[] __initdata = {
         &qcedev_device,
 #endif
 
+#ifdef CONFIG_S5K4E1GX
+        &msm_camera_sensor_s5k4e1gx,
+#endif
+#ifdef CONFIG_MT9V113
+		&msm_camera_sensor_mt9v113, /* 2nd CAM */
+#endif
+
         &htc_battery_pdev,
         &msm_ebi0_thermal,
         &msm_ebi1_thermal,
@@ -3178,7 +3168,6 @@ static struct platform_device *devices[] __initdata = {
 #ifdef CONFIG_BT
         &glacier_rfkill,
 #endif
-		//&glacier_fmtx_rfkill,
 #ifdef CONFIG_ARCH_MSM_FLASHLIGHT
         &glacier_flashlight_device,
 #endif

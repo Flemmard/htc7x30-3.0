@@ -20,7 +20,7 @@
 #define MSM_LINUX_SIZE1			0x0C000000
 #define MSM_LINUX_BASE2			0x20000000
 #define MSM_LINUX_SIZE2			0x0B900000
-#define MSM_MEM_256MB_OFFSET	0x10000000
+#define MSM_MEM_256MB_OFFSET		0x10000000
 
 #define MSM_GPU_MEM_BASE		0x00100000
 #define MSM_GPU_MEM_SIZE		0x00300000
@@ -28,15 +28,22 @@
 #define MSM_RAM_CONSOLE_BASE	0x00500000
 #define MSM_RAM_CONSOLE_SIZE	0x00100000
 
-#define MSM_PMEM_ADSP_SIZE		0x01D00000
-
-#define MSM_PMEM_AUDIO_SIZE		0x00200000
-
+#define MSM_PMEM_ADSP_BASE  	0x2B900000
+#define MSM_PMEM_ADSP_SIZE		0x03600000
+#define PMEM_KERNEL_EBI1_BASE   0x2D600000
 #define PMEM_KERNEL_EBI1_SIZE   0x00700000
 
 #define MSM_PMEM_SF_SIZE		0x02000000
+#define MSM_PMEM_AUDIO_SIZE		0x00200000
 
-#define MSM_FB_SIZE				0x00300000
+#define MSM_PMEM_CAMERA_BASE	0x2DD00000
+#define MSM_PMEM_CAMERA_SIZE	0x00C00000
+
+#define MSM_PMEM_MDP_BASE		0x2DD00000
+#define MSM_PMEM_MDP_SIZE		0x02000000
+
+#define MSM_FB_BASE				0x2FD00000
+#define MSM_FB_SIZE				0x00465000
 
 #define GLACIER_GPIO_WIFI_IRQ             147
 #define GLACIER_GPIO_WIFI_SHUTDOWN_N       39
@@ -76,6 +83,12 @@
 
 #define GLACIER_GPIO_PS_HOLD	(29)
 
+/* Panels */
+#define PANEL_OBSOLATE_0		0
+#define PANEL_SHARP			1
+#define PANEL_SONY			2
+
+/* LCD */
 #define GLACIER_LCD_2V85_EN            (22)
 #define GLACIER_MDDI_RSTz		(162)
 #define GLACIER_LCD_ID0               (124)
@@ -128,22 +141,22 @@
 #define GLACIER_GPIO_BT_CHIP_WAKE      (50)
 #define GLACIER_GPIO_BT_SHUTDOWN_N     (38)
 
-#define GLACIER_GPIO_USB_ID1_PIN		(145)
-#define GLACIER_GPIO_DOCK_PIN			(37)
+#define GLACIER_GPIO_USB_ID1_PIN	(145)
+#define GLACIER_GPIO_DOCK_PIN		(37)
 
-#define GLACIER_CAM_PWD                (34)
-#define GLACIER_CAM_RST                (31)
-#define GLACIER_CLK_SWITCH             (23) /* camera select pin */
-#define GLACIER_CAM2_PWD			   (24)
-#define GLACIER_CAM2_RST			   (21)
+#define GLACIER_CAM_PWD			(34)
+#define GLACIER_CAM_RST			(31)
+#define GLACIER_CLK_SWITCH		(23) /* camera select pin */
+#define GLACIER_CAM2_PWD		(24)
+#define GLACIER_CAM2_RST		(21)
 
-#define GLACIER_OJ_RSTz                (36)
-#define GLACIER_OJ_MOTION              (26)
+#define GLACIER_OJ_RSTz			(36)
+#define GLACIER_OJ_MOTION		(26)
 
-#define GLACIER_GPIO_TP_ATT_N	(20)
+#define GLACIER_GPIO_TP_ATT_N		(20)
 
 /* EMMC */
-#define GLACIER_GPIO_EMMC_RST		   (88)
+#define GLACIER_GPIO_EMMC_RST		(88)
 
 /* PMIC GPIO */
 #define PMGPIO(x) (x-1)
@@ -162,7 +175,7 @@
 #define GLACIER_VOL_UP			PMGPIO(24)
 #define GLACIER_VOL_DN			PMGPIO(25)
 #define GLACIER_AUD_HP_DETz		PMGPIO(26)
-#define GLACIER_CAM_A2V85_EN    PMGPIO(33)/* ANALOG POWER of Glacier*/
+#define GLACIER_CAM_A2V85_EN    	PMGPIO(33)/* ANALOG POWER of Glacier*/
 #define GLACIER_CAM_STEP2		PMGPIO(35)
 #define GLACIER_CAM_STEP1		PMGPIO(36)
 #define GLACIER_WFM_ANT_SW		PMGPIO(37)
@@ -171,6 +184,8 @@
 /*display*/
 extern struct platform_device msm_device_mdp;
 extern struct platform_device msm_device_mddi0;
+extern int panel_type;
+extern unsigned long msm_fb_base;
 
 unsigned int glacier_get_engineerid(void);
 

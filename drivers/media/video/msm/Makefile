@@ -89,7 +89,11 @@ else
     ifdef CONFIG_MACH_BLISSC
       obj-$(CONFIG_MT9V113) += mt9v113.o mt9v113_reg_lens_9251.o
     else
-      obj-$(CONFIG_MT9V113) += mt9v113.o mt9v113_reg.o
+      ifdef CONFIG_MACH_GLACIER
+        obj-$(CONFIG_MT9V113) += mt9v113.o mt9v113_reg_lens_9218.o
+      else
+        obj-$(CONFIG_MT9V113) += mt9v113.o mt9v113_reg.o
+      endif
     endif
   endif
   obj-$(CONFIG_VX6953) += vx6953.o vx6953_reg.o
