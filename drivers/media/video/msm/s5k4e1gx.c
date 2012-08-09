@@ -21,7 +21,6 @@
 #include <linux/i2c.h>
 #include <linux/uaccess.h>
 #include <linux/miscdevice.h>
-//#include <media/msm_camera.h>
 #include <media/msm_camera_sensor.h>
 #include <mach/gpio.h>
 #include <mach/camera-7x30.h>
@@ -156,11 +155,6 @@ static inline void allow_suspend(void)
 #define REG_MIPI_LANE_MODE		0x30E2
 #define MHz 1000000
 #define MCLK 24
-
-enum s5k4e1gx_reg_update_t{
-	REG_INIT,
-	REG_PERIODIC
-};
 
 struct reg_struct {
     // PLL Setting
@@ -455,7 +449,7 @@ struct s5k4e1gx_ctrl {
 	enum msm_s_resolution pict_res;
 	enum msm_s_resolution curr_res;
 	enum msm_s_test_mode  set_test;
-	enum s5k4e1gx_reg_update_t reg_update;
+	enum msm_s_reg_update reg_update;
 };
 
 static struct s5k4e1gx_ctrl *s5k4e1gx_ctrl;
@@ -700,7 +694,7 @@ static int s5k4e1gx_probe_init_sensor(const struct msm_camera_sensor_info *data)
 		goto init_probe_fail;
 
 	/* Add Lens Correction Common Setting For Maverick*/
-    
+        /*
 	if (!sdata->sensor_lc_disable) {
 		pr_info("[CAM]sensor_lc_disable=%d\n", sdata->sensor_lc_disable);
 
@@ -709,7 +703,8 @@ static int s5k4e1gx_probe_init_sensor(const struct msm_camera_sensor_info *data)
 		if (rc < 0)
 			goto init_probe_fail;
 	}
-    
+        */
+
     /* Add analog settings For Maverick*/
 	rc = s5k4e1gx_i2c_read_b(s5k4e1gx_client->addr, S5K4E1GX_REVISION_ID, &evt_ver);
 	if (!(rc < 0)) {
@@ -1522,7 +1517,7 @@ static int s5k4e1gx_sensor_open_init(struct msm_camera_sensor_info *data)
 	s5k4e1gx_ctrl->set_test = S_TEST_OFF;
 	s5k4e1gx_ctrl->prev_res = S_QTR_SIZE;
 	s5k4e1gx_ctrl->pict_res = S_FULL_SIZE;
-	s5k4e1gx_ctrl->reg_update = REG_INIT;
+	s5k4e1gx_ctrl->reg_update = S_REG_INIT;
 
 	if (data)
 		s5k4e1gx_ctrl->sensordata = data;
@@ -2519,6 +2514,7 @@ module_exit(s5k4e1gx_exit);
 
 MODULE_DESCRIPTION("camera sensor driver");
 MODULE_LICENSE("GPL");
+
 
 
 

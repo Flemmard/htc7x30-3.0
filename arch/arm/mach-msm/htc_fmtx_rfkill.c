@@ -25,10 +25,6 @@
 #include <mach/htc_fmtx_rfkill.h>
 #include <linux/mfd/pmic8058.h>
 
-#define FMTX_DBG
-#define FMTX_ON 1
-#define FMTX_OFF 0
-
 static struct rfkill *htc_fmtx_rfk;
 static const char htc_fmtx_name[] = "fmtx";
 static int htc_fmtx_switch_pin;
@@ -48,10 +44,8 @@ static int htc_fmtx_switch(int enable)
 {
 	int err = 0;
 
-	#ifdef FMTX_DBG
 	pr_err("--- %s(enable=%d, pin=%d) ---\n", __func__,
 			enable, htc_fmtx_switch_pin);
-	#endif
 
 	if (htc_fmtx_switch_pin < 0) {
 		pr_err("err: fmtx switch pin config error\n");
@@ -74,9 +68,9 @@ static int htc_fmtx_switch(int enable)
 static int htc_fmtx_set_power(void *data, bool blocked)
 {
 	if (!blocked)
-			htc_fmtx_switch(FMTX_ON);
+			htc_fmtx_switch(1);
 	else
-			htc_fmtx_switch(FMTX_OFF);
+			htc_fmtx_switch(0);
 
 	return 0;
 }
