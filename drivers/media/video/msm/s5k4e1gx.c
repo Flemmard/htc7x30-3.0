@@ -156,11 +156,6 @@ static inline void allow_suspend(void)
 #define MHz 1000000
 #define MCLK 24
 
-enum s5k4e1gx_reg_update_t{
-	REG_INIT,
-	REG_PERIODIC
-};
-
 struct reg_struct {
     // PLL Setting
 	uint8_t pre_pll_clk_div;		/* 0x0305 */
@@ -454,7 +449,7 @@ struct s5k4e1gx_ctrl {
 	enum msm_s_resolution pict_res;
 	enum msm_s_resolution curr_res;
 	enum msm_s_test_mode  set_test;
-	enum s5k4e1gx_reg_update_t reg_update;
+	enum msm_s_reg_update reg_update;
 };
 
 static struct s5k4e1gx_ctrl *s5k4e1gx_ctrl;
@@ -1522,7 +1517,7 @@ static int s5k4e1gx_sensor_open_init(struct msm_camera_sensor_info *data)
 	s5k4e1gx_ctrl->set_test = S_TEST_OFF;
 	s5k4e1gx_ctrl->prev_res = S_QTR_SIZE;
 	s5k4e1gx_ctrl->pict_res = S_FULL_SIZE;
-	s5k4e1gx_ctrl->reg_update = REG_INIT;
+	s5k4e1gx_ctrl->reg_update = S_REG_INIT;
 
 	if (data)
 		s5k4e1gx_ctrl->sensordata = data;

@@ -743,7 +743,7 @@ static int pm8058_gpios_init(void)
 		.direction      = PM_GPIO_DIR_IN,
 		.output_buffer  = 0,
 		.output_value   = 0,
-		.pull           = PM_GPIO_PULL_NO,
+		.pull           = PM_GPIO_PULL_UP_31P5,
 		.vin_sel        = PM8058_GPIO_VIN_S3,
 		.out_strength   = 0,
 		.function       = PM_GPIO_FUNC_NORMAL,
