@@ -5,7 +5,7 @@
 
 struct battery_type{
 
-		BOOL is_power_on_reset;
+		BOOL is_prediction;
 
 		INT32 voltage_mV;
 		INT32 current_mA;
@@ -28,6 +28,7 @@ struct battery_type{
 		INT32 id_index;
 		INT32 charge_full_design_mAh;
 		INT32 charge_full_real_mAh;
+		INT32 dead_voltage_mV;
 
 		INT32 temp_index;
 		INT32 temp_check_index;
@@ -46,11 +47,9 @@ struct protect_flags_type{
 		BOOL is_charging_high_current_avaialble;
 		BOOL is_charging_indicator_available;
 		BOOL is_battery_dead;
-#if 0
-		BOOL is_battery_overtemp;
-#endif
+		BOOL is_temperature_fault;
 		BOOL is_fake_room_temp;
-		int (*func_update_charging_protect_flag)(int, int, int, BOOL*, BOOL*);
+		int (*func_update_charging_protect_flag)(int, int, int, BOOL*, BOOL*, BOOL*);
 };
 
 /* ds2746 register definition*/
@@ -61,11 +60,15 @@ struct protect_flags_type{
 #define DS2746_STATUS_AIN0  (1 << 0)
 #define DS2746_STATUS_AIN1  (1 << 1)
 
-/* function prototypes*/
+/* default parameter definition */
+#define BATTERY_DEAD_VOLTAGE_DEFAULT  	(3550)
 
+/* function prototypes*/
 void battery_capacity_update(struct battery_type *battery, int capacity_01p);
 BOOL battery_param_update(struct battery_type *battery, struct protect_flags_type *flags);
 DWORD BAHW_MyGetMSecs(void);
 void battery_param_init(struct battery_type *battery);
+
+INT32 get_dead_battery_voltage(UINT32** m_param_tbl, int batt_id);
 
 #endif /* __BATT_PARAM_H__*/

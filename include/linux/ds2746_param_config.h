@@ -20,7 +20,7 @@ Original Auther:
 
 #ifndef __BATT_PARAM_CONFIG_H__
 #define __BATT_PARAM_CONFIG_H__
-#define HTC_BATT_BOARD_NAME "ACE"
+#define HTC_BATT_BOARD_NAME "FLYER"
 
 /*========================================================================================
 
@@ -55,15 +55,15 @@ UINT32 TEMP_MAP_300K_100_4360[] =
 
 UINT32 TEMP_MAP_300K_47_3440[] =
 {
-0, 68, 70, 72, 74, 76, 78, 81, 83, 85,
-88, 91, 93, 96, 99, 102, 105, 109, 112, 116,
-119, 123, 127, 131, 135, 139, 144, 148, 153, 158,
-163, 169, 174, 180, 186, 192, 199, 205, 212, 219,
-227, 234, 242, 250, 259, 268, 277, 286, 296, 306,
-317, 327, 339, 350, 362, 374, 387, 401, 414, 428,
-443, 458, 474, 490, 506, 523, 540, 558, 577, 596,
-615, 656, 677, 698, 720, 742, 765, 789, 812, 837,
-861, 886, 2047,
+0, 68, 70, 72, 74, 76, 79, 81, 84, 86,
+89, 92, 95, 97, 101, 104, 107, 110, 114, 118,
+121, 125, 129, 133, 138, 142, 147, 152, 157, 162,
+167, 173, 178, 184, 191, 197, 204, 210, 218, 225,
+232, 240, 249, 257, 266, 275, 284, 294, 303, 314,
+324, 335, 346, 358, 370, 382, 395, 408, 422, 436,
+450, 465, 480, 496, 513, 529, 546, 564, 582, 601,
+620, 639, 659, 680, 701, 722, 744, 766, 788, 811,
+835, 858, 2047,
 };
 
 UINT32 TEMP_MAP_1000K_100_4360[] =
@@ -128,14 +128,9 @@ static INT32 over_low_temp_release_01c = 30;
 
 /* function config*/
 
-static BOOL is_allow_batt_id_change = TRUE;	// MATT
+static BOOL is_allow_batt_id_change = TRUE;
 extern BOOL is_need_battery_id_detection;
 
-/*boot up voltage*/
-
-/*dead battery is voltage < M_0*/
-#define BATTERY_DEAD_VOLTAGE_LEVEL  	3420
-#define BATTERY_DEAD_VOLTAGE_RELEASE	3450
 
 #define TEMP_MAX 70
 #define TEMP_MIN -11

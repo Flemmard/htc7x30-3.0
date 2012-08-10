@@ -125,6 +125,20 @@ struct battery_parameter {
 	INT32* temp_index_tbl;	/* NULL: disable */
 	UINT32** m_param_tbl;
 	int m_param_tbl_size;
+
+	INT32 voltage_adc_to_mv_coef;
+	INT32 voltage_adc_to_mv_resl;
+	INT32 current_adc_to_mv_coef;
+	INT32 current_adc_to_mv_resl;
+	INT32 discharge_adc_to_mv_coef;
+	INT32 discharge_adc_to_mv_resl;
+	INT32 acr_adc_to_mv_coef;
+	INT32 acr_adc_to_mv_resl;
+	INT32 charge_counter_zero_base_mAh;
+
+	INT32 id_adc_overflow;
+	INT32 id_adc_resl;
+	INT32 temp_adc_resl;
 };
 
 struct _ds2746_platform_data {
@@ -132,9 +146,8 @@ struct _ds2746_platform_data {
 	int (*func_get_thermal_id)(void);
 	int (*func_get_battery_id)(void);
 	void (*func_poweralg_config_init)(struct poweralg_config_type*);
-	int (*func_update_charging_protect_flag)(int, int, int, BOOL*, BOOL*);
+	int (*func_update_charging_protect_flag)(int, int, int, BOOL*, BOOL*, BOOL*);
 	int r2_kohm;
-	//UINT32* id_tbl;
 };
 
 
@@ -159,6 +172,7 @@ int ds2746_i2c_write_u8( u8 value, u8 reg);
 int ds2746_i2c_read_u8( u8* value, u8 reg);
 int ds2746_battery_id_adc_2_ohm(int id_adc, int r2_kohm);
 void calibrate_id_ohm( struct battery_type *battery);
+extern int ds2746_charger_switch(int charger_switch);
 /* external function implemented by upper layer*/
 
 /*extern void powerlog_to_file(struct poweralg_type* poweralg);*/
