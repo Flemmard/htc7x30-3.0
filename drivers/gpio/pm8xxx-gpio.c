@@ -355,6 +355,22 @@ static int __devexit pm_gpio_remove(struct platform_device *pdev)
 	return 0;
 }
 
+int pm8xxx_gpio_cfg(int gpio, int dir, int outb, int outv, int pull, int vsel, int out_strength, int function, int inv_int_pol)
+{
+  int ret;
+  static struct pm_gpio tmp;
+  tmp.direction          = dir;
+  tmp.output_buffer      = outb;
+  tmp.output_value       = outv;
+  tmp.pull               = pull;
+  tmp.vin_sel            = vsel;
+  tmp.out_strength       = out_strength;
+  tmp.function           = function;
+  tmp.inv_int_pol        = inv_int_pol;
+  ret = pm8xxx_gpio_config((gpio + NR_GPIO_IRQS), &tmp);
+  printk(KERN_INFO "%s: ok writing config for gpio %d(%d) (%d)\n", __func__, gpio, gpio + NR_GPIO_IRQS, ret); 
+}
+
 int pm8xxx_gpio_config(int gpio, struct pm_gpio *param)
 {
 	int	rc, pm_gpio = -EINVAL;
