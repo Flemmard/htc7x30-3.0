@@ -41,3 +41,6 @@ obj-$(CONFIG_FB_MSM_LCDC) += mdp_lcdc.o
 obj-$(CONFIG_FB_MSM_DTV) += mdp_dtv.o
 obj-$(CONFIG_FB_MSM_TVOUT) += tvenc.o tvfb.o
 
+obj-$(CONFIG_MSM_HDMI_COMMON) += hdmi_common.o
+
+obj-$(CONFIG_MSM_HDMI_MHL_SII9232) += mhl/sii9232/
