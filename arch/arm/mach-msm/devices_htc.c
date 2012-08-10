@@ -152,6 +152,32 @@ static int __init parse_tag_als_calibration(const struct tag *tag)
 
 __tagtable(ATAG_ALS, parse_tag_als_calibration);
 
+/* CSA sensor calibration values */
+#define ATAG_CSA	0x5441001f
+
+unsigned int csa_kvalue1;
+EXPORT_SYMBOL(csa_kvalue1);
+
+unsigned int csa_kvalue2;
+EXPORT_SYMBOL(csa_kvalue2);
+
+unsigned int csa_kvalue3;
+EXPORT_SYMBOL(csa_kvalue3);
+
+static int __init parse_tag_csa_calibration(const struct tag *tag)
+{
+	unsigned int *ptr = (unsigned int *)&tag->u;
+	csa_kvalue1 = ptr[0];
+	csa_kvalue2 = ptr[1];
+	csa_kvalue3 = ptr[2];
+
+	printk(KERN_DEBUG "csa_kvalue1 = 0x%x, csa_kvalue2 = 0x%x, "
+	"csa_kvalue3 = 0x%x\n", csa_kvalue1, csa_kvalue2, csa_kvalue3);
+
+	return 0;
+}
+__tagtable(ATAG_CSA, parse_tag_csa_calibration);
+
 #define ATAG_MEMSIZE 0x5441001e
 unsigned memory_size;
 int __init parse_tag_memsize(const struct tag *tags)
@@ -337,6 +363,27 @@ int __init parse_tag_mfg_gpio_table(const struct tag *tags)
        return 0;
 }
 __tagtable(ATAG_MFG_GPIO_TABLE, parse_tag_mfg_gpio_table);
+
+static char *emmc_tag;
+static int __init board_set_emmc_tag(char *get_hboot_emmc)
+{
+	if (strlen(get_hboot_emmc))
+		emmc_tag = get_hboot_emmc;
+	else
+		emmc_tag = NULL;
+	return 1;
+}
+__setup("androidboot.emmc=", board_set_emmc_tag);
+
+int board_emmc_boot(void)
+{
+	if (emmc_tag) {
+		if (!strcmp(emmc_tag, "true"))
+			return 1;
+	}
+
+	return 0;
+}
 
 char *board_get_mfg_sleep_gpio_table(void)
 {

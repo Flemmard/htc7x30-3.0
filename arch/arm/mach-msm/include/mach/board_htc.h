@@ -110,6 +110,7 @@ void board_get_sku_color_tag(char **);
 void board_get_keycaps_tag(char **);
 void board_get_cid_tag(char **);
 void board_get_carrier_tag(char **);
+int board_emmc_boot(void);
 
 char *board_serialno(void);
 unsigned long get_kernel_flag(void);
