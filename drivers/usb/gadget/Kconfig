@@ -1318,6 +1318,10 @@ config USB_G_WEBCAM
 
 endchoice
 
+config USB_ACCESSORY_DETECT
+	boolean "USB ACCESSORY DETECT"
+	default n
+
 config USB_ACCESSORY_DETECT_BY_ADC
         boolean "DETECT USB ACCESSORY BY PMIC ADC"
         default n
