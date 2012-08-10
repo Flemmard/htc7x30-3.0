@@ -31,6 +31,18 @@ config SENSORS_AKM8975
         help
          AKM8975 Compass Driver implemented by HTC.
 
+config SENSORS_CAPSENSE
+	tristate "CapSense Driver"
+	depends on I2C
+	help
+	 CapSense Driver implemented by HTC.
+
+config SENSORS_CAPSENSE_EXPRESS
+	tristate "CapSense Express Driver"
+	depends on I2C
+	help
+	 CapSense Express Driver implemented by HTC.
+
 config SENSORS_AKM8975_PANA_GYRO
         tristate "AKM8973 Compass Driver for Pana Gyro"
         depends on I2C
