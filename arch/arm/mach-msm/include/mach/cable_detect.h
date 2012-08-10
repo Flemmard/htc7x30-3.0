@@ -67,6 +67,7 @@ struct cable_detect_platform_data {
 	bool mhl_version_ctrl_flag;
 	struct usb_id_mpp_config_data mpp_data;
 	void (*config_usb_id_gpios)(bool enable);
+	void (*usb_mhl_switch)(bool);
 	void (*mhl_1v2_power)(bool enable);
 	int (*is_wireless_charger)(void);
 	int64_t (*get_adc_cb)(void);

@@ -360,6 +360,8 @@ static void cable_detect_handler(struct work_struct *w)
 		CABLE_INFO("MHL inserted\n");
 		switch_set_state(&dock_switch, DOCK_STATE_MHL);
 		pInfo->accessory_type = DOCK_STATE_MHL;
+                if (pInfo->usb_mhl_switch)
+                  pInfo->usb_mhl_switch(1);
 #ifdef MHL_INTERNAL_POWER
 		if (!pInfo->mhl_internal_3v3 && !vbus)
 			send_cable_connect_notify(CONNECT_TYPE_INTERNAL);
@@ -405,6 +407,8 @@ static void cable_detect_handler(struct work_struct *w)
 #ifdef CONFIG_FB_MSM_HDMI_MHL_SII9234
 		case DOCK_STATE_MHL:
 			CABLE_INFO("MHL removed\n");
+                        if (pInfo->usb_mhl_switch)
+                          pInfo->usb_mhl_switch(0);
 			switch_set_state(&dock_switch, DOCK_STATE_UNDOCKED);
 			break;
 #endif

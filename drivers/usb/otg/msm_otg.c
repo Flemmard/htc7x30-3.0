@@ -2228,12 +2228,19 @@ void msm_otg_set_id_state(int id)
 	schedule_work(&motg->sm_work);
 }
 
+static void usb_host_switch(int on)
+{
+	if (the_otg_info->usb_host_switch)
+		the_otg_info->usb_host_switch(on);
+}
+
 static void usb_host_cable_detect(bool cable_in)
 {
 	if (cable_in)
 		msm_otg_set_id_state(0);
 	else
 		msm_otg_set_id_state(1);
+        usb_host_switch(cable_in ? 1 : 0);
 }
 #endif
 
