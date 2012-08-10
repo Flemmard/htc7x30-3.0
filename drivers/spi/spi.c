@@ -1182,6 +1182,25 @@ int spi_write_and_read(struct spi_device *spi,
 }
 EXPORT_SYMBOL_GPL(spi_write_and_read);
 
+static inline int spi_Duplex(struct spi_device *spi,  char *txbuf,
+	char *rxbuf, size_t len)
+{
+	int spiRet;
+	struct spi_transfer t = {
+		.tx_buf = txbuf,
+		.rx_buf = rxbuf,
+		.len = len,
+	};
+	struct spi_message m;
+
+	spi_message_init(&m);
+	spi_message_add_tail(&t, &m);
+
+	spiRet = spi_sync(spi, &m);
+	return spiRet;
+}
+EXPORT_SYMBOL_GPL(spi_Duplex);
+
 static DEFINE_MUTEX(spi_lock);
 int
 spi_read_write_lock(struct spi_device *spidev, struct spi_msg *msg, char *buf, int size, int func)
@@ -1199,13 +1218,11 @@ spi_read_write_lock(struct spi_device *spidev, struct spi_msg *msg, char *buf, i
 				break;
 			err = spi_write(spidev, msg->buffer, (msg->len + 1)*size);
 			break;
-/*
-		case 2:
+        case 2:
 			if (!msg)
 				break;
 			err = spi_Duplex(spidev, msg->data, buf, size);
 			break;
-*/
 	}
 	mutex_unlock(&spi_lock);
 	return err;
