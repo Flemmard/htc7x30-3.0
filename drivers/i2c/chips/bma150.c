@@ -184,14 +184,14 @@ static int bma_release(struct inode *inode, struct file *file)
 	return 0;
 }
 
-static int bma_ioctl(struct file *file, unsigned int cmd,
+static long bma_ioctl(struct file *file, unsigned int cmd,
 	   unsigned long arg)
 {
 
 	void __user *argp = (void __user *)arg;
 
 	char rwbuf[8] = "";
-	int ret = -1;
+	long ret = -1;
 	short buf[8], temp;
 	int kbuf = 0;
 
