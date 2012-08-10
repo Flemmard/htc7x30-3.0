@@ -90,6 +90,9 @@ unsigned int system_rev;
 unsigned int system_rev2;
 EXPORT_SYMBOL(system_rev);
 
+char microp_ver[4];
+EXPORT_SYMBOL(microp_ver);
+
 unsigned int system_serial_low;
 EXPORT_SYMBOL(system_serial_low);
 
