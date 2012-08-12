@@ -1707,7 +1707,7 @@ config MSM7KV2_1X_AUDIO
 config MSM_ADSP_REPORT_EVENTS
 	bool "Report modem events from the DSP"
 	default y
-	depends on (MSM_ADSP || MSM7KV2_AUDIO)
+	depends on (MSM_ADSP || MSM7KV2_AUDIO || MSM7KV2_1X_AUDIO)
 	help
 	  Normally, only messages from the aDSP are reported to userspace.
 	  With this option, we report events from the aDSP as well.
