@@ -24,7 +24,7 @@
 #include <linux/platform_device.h>
 #include <mach/atmega_microp.h>
 
-/*#define EARLY_SUSPEND_BMA 1*/
+#define EARLY_SUSPEND_BMA 1
 #define D(x...) printk(KERN_DEBUG "[GSNR][BMA150 SPI] " x)
 #define E(x...) printk(KERN_ERR "[GSNR][BMA150 SPI ERROR] " x)
 #define DIF(x...) if (debug_flag) \
