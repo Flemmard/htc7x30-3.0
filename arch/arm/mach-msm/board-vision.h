@@ -81,12 +81,13 @@ extern struct platform_device msm_device_mddi0;
 #define VISION_GPIO_TP_ATT_N	(20)
 
 
-#define VISION_LAYOUTS			{ \
-		{ { 0,  1, 0}, { -1, 0,  0}, {0, 0,  1} }, \
-		{ { 0, -1, 0}, { 1,  0,  0}, {0, 0, -1} }, \
-		{ { -1, 0, 0}, { 0, -1,  0}, {0, 0,  1} }, \
-		{ {-1,  0, 0}, { 0,  0, -1}, {0, 1,  0} }  \
-					}
+#define VISION_LAYOUTS                  { \
+                { { 0,  1, 0}, { 1,  0,  0}, {0, 0, -1} }, \
+                { { 0, -1, 0}, { 1,  0,  0}, {0, 0, -1} }, \
+                { { 1,  0, 0}, { 0, -1,  0}, {0, 0, -1} }, \
+                { {-1,  0, 0}, { 0,  0, -1}, {0, 1,  0} }  \
+                                        }
+
 #define VISION_EL_EN			(21)
 #define VISION_LCD_B0                 (22)
 #define VISION_LCD_R0                 (25)
