@@ -67,6 +67,7 @@
 
 #define DRIVER_HS_MGR_RPC_SERVER	(1 << 0)
 #define DRIVER_HS_MGR_FLOAT_DET		(1 << 1)
+#define DRIVER_HS_MGR_OLD_AJ		(1 << 2)
 
 #define DEBUG_FLAG_LOG		(1 << 0)
 #define DEBUG_FLAG_ADC		(1 << 1)
@@ -78,8 +79,7 @@
 #define BIT_FM_SPEAKER		(1 << 4)
 #define BIT_TTY_VCO		(1 << 5)
 #define BIT_TTY_HCO		(1 << 6)
-//#define BIT_35MM_HEADSET	(1 << 7)
-#define BIT_35MM_HEADSET	0
+#define BIT_35MM_HEADSET	(1 << 7)
 #define BIT_TV_OUT		(1 << 8)
 #define BIT_USB_CRADLE		(1 << 9)
 #define BIT_TV_OUT_AUDIO	(1 << 10)
@@ -126,16 +126,20 @@
 #define HS_DELAY_MIC_BIAS		200
 #define HS_DELAY_MIC_DETECT		1000
 #define HS_DELAY_INSERT			500
-#define HS_DELAY_REMOVE			200
-#define HS_DELAY_BUTTON			500
+#define HS_DELAY_REMOVE_LONG		700
+#define HS_DELAY_REMOVE_SHORT		200
+#define HS_DELAY_BUTTON			10
+#define HS_DELAY_BUTTON_LONG		50
 #define HS_DELAY_IRQ_INIT		(10 * HS_DELAY_SEC)
 
 #define HS_JIFFIES_ZERO			msecs_to_jiffies(HS_DELAY_ZERO)
 #define HS_JIFFIES_MIC_BIAS		msecs_to_jiffies(HS_DELAY_MIC_BIAS)
 #define HS_JIFFIES_MIC_DETECT		msecs_to_jiffies(HS_DELAY_MIC_DETECT)
 #define HS_JIFFIES_INSERT		msecs_to_jiffies(HS_DELAY_INSERT)
-#define HS_JIFFIES_REMOVE		msecs_to_jiffies(HS_DELAY_REMOVE)
+#define HS_JIFFIES_REMOVE_LONG		msecs_to_jiffies(HS_DELAY_REMOVE_LONG)
+#define HS_JIFFIES_REMOVE_SHORT		msecs_to_jiffies(HS_DELAY_REMOVE_SHORT)
 #define HS_JIFFIES_BUTTON		msecs_to_jiffies(HS_DELAY_BUTTON)
+#define HS_JIFFIES_BUTTON_LONG		msecs_to_jiffies(HS_DELAY_BUTTON_LONG)
 #define HS_JIFFIES_IRQ_INIT		msecs_to_jiffies(HS_DELAY_IRQ_INIT)
 
 #define HS_WAKE_LOCK_TIMEOUT		(2 * HZ)

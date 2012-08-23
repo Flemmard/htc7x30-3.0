@@ -321,10 +321,20 @@ static void irq_init_work_func(struct work_struct *work)
 	}
 
 	if (hi->pdata.key_gpio) {
-		HS_LOG("Enable button IRQ");
+		HS_LOG("Setup button IRQ type");
 		hi->key_irq_type = irq_type;
 		set_irq_type(hi->pdata.key_irq, hi->key_irq_type);
+	}
+}
+
+static void hs_pmic_key_int_enable(int enable)
+{
+	if (enable) {
 		enable_irq(hi->pdata.key_irq);
+		HS_LOG("Enable remote key irq");
+	} else {
+		disable_irq(hi->pdata.key_irq);
+		HS_LOG("Disable remote key irq");
 	}
 }
 
@@ -411,6 +421,13 @@ static void hs_pmic_register(void)
 	if (hi->pdata.key_enable_gpio) {
 		notifier.id = HEADSET_REG_KEY_ENABLE;
 		notifier.func = hs_pmic_key_enable;
+		headset_notifier_register(&notifier);
+	}
+
+
+	if (hi->pdata.key_gpio) {
+		notifier.id = HEADSET_REG_KEY_INT_ENABLE;
+		notifier.func = hs_pmic_key_int_enable;
 		headset_notifier_register(&notifier);
 	}
 }
