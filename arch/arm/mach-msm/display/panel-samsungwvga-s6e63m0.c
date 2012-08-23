@@ -125,14 +125,13 @@ static struct spi_msg samsung_oled_gamma_table[] = {
 #define SPI_ERROR_FLAGS         (0x00000034)
 #define SPI_OUTPUT_FIFO         (0x00000100)
 extern int panel_type;
-extern int qspi_send(uint32_t id, uint8_t data);
-extern int qspi_send_9bit(struct spi_msg *msg);
+extern int spi_display_send_9bit(struct spi_msg *msg);
 
 
 static int lcm_write_cmd(struct spi_msg cmd)
 {
         int ret = -1;
-	ret = qspi_send_9bit(&cmd);
+	ret = spi_display_send_9bit(&cmd);
         return 0;
 }
 
@@ -185,7 +184,7 @@ static struct spi_msg init_cmd = {
 static void amoled_set_gamma_val(int level)
 {
 	lcm_write_cmd(samsung_oled_gamma_table[level]);
-	qspi_send_9bit(&gamma_update);
+	spi_display_send_9bit(&gamma_update);
 
 	last_level = level;
 }
@@ -198,7 +197,7 @@ static int amoled_panel_unblank(struct msm_lcdc_panel_ops *panel_data)
 	mutex_lock(&panel_lock);
 	amoled_set_gamma_val(last_level);
 	/* Display on */
-	qspi_send_9bit(&unblank_msg);
+	spi_display_send_9bit(&unblank_msg);
 	mutex_unlock(&panel_lock);
 	wake_unlock(&panel_idle_lock);
 
@@ -232,7 +231,7 @@ static int amoled_panel_blank(struct msm_lcdc_panel_ops *panel_data)
 {
 	LCMDBG("%s\n", __func__);
 	mutex_lock(&panel_lock);
-	qspi_send_9bit(&blank_cmd);
+	spi_display_send_9bit(&blank_cmd);
 	hr_msleep(120);
 	mutex_unlock(&panel_lock);
 	amoled_panel_power(0);
@@ -250,7 +249,7 @@ static int samsung_oled_panel_init(struct msm_lcdc_panel_ops *ops)
 	mutex_lock(&panel_lock);
 	lcm_write_seq(lcm_init_seq, ARRAY_SIZE(lcm_init_seq));
 	/* standby off */
-	qspi_send_9bit(&init_cmd);
+	spi_display_send_9bit(&init_cmd);
 	hr_msleep(120);
 	mutex_unlock(&panel_lock);
 	wake_unlock(&panel_idle_lock);

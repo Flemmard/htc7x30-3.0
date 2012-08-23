@@ -51,8 +51,8 @@ enum {
 	PANEL_UNKNOW
 };
 static int color_enhancement = 0;
-int qspi_send_16bit(unsigned char id, unsigned data);
-int qspi_send_9bit(struct spi_msg *msg);
+int spi_display_send_16bit(unsigned char id, unsigned data);
+int spi_display_send_9bit(struct spi_msg *msg);
 
 static int spade_adjust_backlight(enum led_brightness val);
 
@@ -432,7 +432,7 @@ static int lcm_auo_write_seq(struct lcm_cmd *cmd_table, unsigned size)
 			hr_msleep(cmd_table[i].data);
 			continue;
 		}
-		qspi_send_16bit(cmd_table[i].cmd, cmd_table[i].data);
+		spi_display_send_16bit(cmd_table[i].cmd, cmd_table[i].data);
 	}
         return 0;
 }
@@ -1058,7 +1058,7 @@ static int lcm_sharp_write_seq(struct spi_msg *cmd_table, unsigned size)
 			hr_msleep(cmd_table[i].data[0]);
 			continue;
 		}
-		qspi_send_9bit(cmd_table + i);
+		spi_display_send_9bit(cmd_table + i);
 	}
 	return 0;
 }

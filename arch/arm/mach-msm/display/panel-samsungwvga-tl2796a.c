@@ -348,16 +348,16 @@ static struct lcm_cmd samsung_oled_gamma_table[][OLED_GAMMA_TABLE_SIZE] = {
 #define SPI_ERROR_FLAGS         (0x00000034)
 #define SPI_OUTPUT_FIFO         (0x00000100)
 extern int panel_type;
-extern int qspi_send(uint32_t id, uint8_t data);
+extern int spi_display_send_16bit(uint32_t id, uint8_t data);
 static int lcm_write_cmd(uint32_t reg, uint32_t data)
 {
 	int ret = -1;
 
-	ret = qspi_send(0x0, reg);
+	ret = spi_display_send_16bit(0x0, reg);
 	if (ret)
 		goto err_lcm_writeb;
 
-	ret = qspi_send(0x1, data);
+	ret = spi_display_send_16bit(0x1, data);
 	if (ret)
 		goto err_lcm_writeb;
 	return 0;
@@ -448,9 +448,9 @@ static int amoled_panel_unblank(struct msm_lcdc_panel_ops *panel_data)
 	table_sel_idx = 0;
 	gamma_table_bank_select();
 	amoled_set_gamma_val(last_val);
-	qspi_send(0, 0xef);
-	qspi_send(1, 0xd0);
-	qspi_send(1, 0xe8);
+	spi_display_send_16bit(0, 0xef);
+	spi_display_send_16bit(1, 0xd0);
+	spi_display_send_16bit(1, 0xe8);
 	lcm_write_cmd(0x14, 0x03);
 	mutex_unlock(&panel_lock);
 	wake_unlock(&panel_idle_lock);

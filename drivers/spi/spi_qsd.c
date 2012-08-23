@@ -649,7 +649,7 @@ static inline int msm_spi_request_gpios(struct msm_spi *dd)
 		if (dd->spi_gpios[i] >= 0) {
 			result = gpio_request(dd->spi_gpios[i], spi_rsrcs[i]);
 			if (result) {
-				dev_err(dd->dev, "%s: gpio_request for pin %d "
+				dev_err(dd->dev, "[SPI] SPI_ERR: %s: gpio_request for pin %d "
 					"failed with error %d\n", __func__,
 					dd->spi_gpios[i], result);
 				goto error;
@@ -781,7 +781,7 @@ static void __init msm_spi_calculate_fifo_size(struct msm_spi *dd)
 
 fifo_size_err:
 	dd->use_dma = 0;
-	printk(KERN_WARNING "%s: invalid FIFO size, SPI_IO_MODES=0x%x\n",
+	printk(KERN_WARNING "[SPI] %s: invalid FIFO size, SPI_IO_MODES=0x%x\n",
 	       __func__, spi_iom);
 	return;
 }
@@ -866,7 +866,7 @@ static inline int msm_spi_wait_valid(struct msm_spi *dd)
 			if (!msm_spi_is_valid_state(dd)) {
 				if (dd->cur_msg)
 					dd->cur_msg->status = -EIO;
-				dev_err(dd->dev, "%s: SPI operational state"
+				dev_err(dd->dev, "[SPI] SPI_ERR: %s: SPI operational state"
 					"not valid\n", __func__);
 				return -ETIMEDOUT;
 			} else
@@ -1247,16 +1247,16 @@ static irqreturn_t msm_spi_error_irq(int irq, void *dev_id)
 
 	spi_err = readl_relaxed(dd->base + SPI_ERROR_FLAGS);
 	if (spi_err & SPI_ERR_OUTPUT_OVER_RUN_ERR)
-		dev_warn(master->dev.parent, "SPI output overrun error\n");
+		dev_warn(master->dev.parent, "[SPI] SPI output overrun error\n");
 	if (spi_err & SPI_ERR_INPUT_UNDER_RUN_ERR)
-		dev_warn(master->dev.parent, "SPI input underrun error\n");
+		dev_warn(master->dev.parent, "[SPI] SPI input underrun error\n");
 	if (spi_err & SPI_ERR_OUTPUT_UNDER_RUN_ERR)
-		dev_warn(master->dev.parent, "SPI output underrun error\n");
+		dev_warn(master->dev.parent, "[SPI] SPI output underrun error\n");
 	msm_spi_get_clk_err(dd, &spi_err);
 	if (spi_err & SPI_ERR_CLK_OVER_RUN_ERR)
-		dev_warn(master->dev.parent, "SPI clock overrun error\n");
+		dev_warn(master->dev.parent, "[SPI] SPI clock overrun error\n");
 	if (spi_err & SPI_ERR_CLK_UNDER_RUN_ERR)
-		dev_warn(master->dev.parent, "SPI clock underrun error\n");
+		dev_warn(master->dev.parent, "[SPI] SPI clock underrun error\n");
 	msm_spi_clear_error_flags(dd);
 	msm_spi_ack_clk_err(dd);
 	/* Ensure clearing of QUP_ERROR_FLAGS was completed */
@@ -1312,7 +1312,7 @@ static int msm_spi_map_dma_buffers(struct msm_spi *dd)
 		first_xfr->tx_dma = dma_map_single(dev, tx_buf,
 						   tx_len, DMA_TO_DEVICE);
 		if (dma_mapping_error(NULL, first_xfr->tx_dma)) {
-			dev_err(dev, "dma %cX %d bytes error\n",
+			dev_err(dev, "[SPI] SPI_ERR: dma %cX %d bytes error\n",
 				'T', tx_len);
 			ret = -ENOMEM;
 			goto error;
@@ -1323,7 +1323,7 @@ static int msm_spi_map_dma_buffers(struct msm_spi *dd)
 		dma_handle = dma_map_single(dev, rx_buf,
 					    rx_len, DMA_FROM_DEVICE);
 		if (dma_mapping_error(NULL, dma_handle)) {
-			dev_err(dev, "dma %cX %d bytes error\n",
+			dev_err(dev, "[SPI] SPI_ERR: dma %cX %d bytes error\n",
 				'R', rx_len);
 			if (tx_buf != NULL)
 				dma_unmap_single(NULL, first_xfr->tx_dma,
@@ -1481,7 +1481,7 @@ static void msm_spi_process_transfer(struct msm_spi *dd)
 		max_speed = dd->cur_transfer->speed_hz;
 	else
 		max_speed = dd->cur_msg->spi->max_speed_hz;
-	if (!dd->clock_speed || max_speed < dd->clock_speed)
+	if (!dd->clock_speed || max_speed != dd->clock_speed)
 		msm_spi_clock_set(dd, max_speed);
 
 	read_count = DIV_ROUND_UP(dd->cur_msg_len, dd->bytes_per_word);
@@ -1491,12 +1491,12 @@ static void msm_spi_process_transfer(struct msm_spi *dd)
 			(read_count > dd->input_fifo_size)) {
 		if (dd->read_len && dd->write_len)
 			printk(KERN_WARNING
-			"%s:Internal Loopback does not support > fifo size\
+			"[SPI] %s:Internal Loopback does not support > fifo size\
 			for write-then-read transactions\n",
 			__func__);
 		else if (dd->write_len && !dd->read_len)
 			printk(KERN_WARNING
-			"%s:Internal Loopback does not support > fifo size\
+			"[SPI] %s:Internal Loopback does not support > fifo size\
 			for write-then-write transactions\n",
 			__func__);
 		return;
@@ -1587,7 +1587,7 @@ static void msm_spi_process_transfer(struct msm_spi *dd)
 	do {
 		if (!wait_for_completion_timeout(&dd->transfer_complete,
 						 timeout)) {
-				dev_err(dd->dev, "%s: SPI transaction "
+				dev_err(dd->dev, "[SPI] SPI_ERR: %s: SPI transaction "
 						 "timeout\n", __func__);
 				dd->cur_msg->status = -EIO;
 				if (dd->mode == SPI_DMOV_MODE) {
@@ -1684,7 +1684,7 @@ static void msm_spi_process_message(struct msm_spi *dd)
 		rc = gpio_request(dd->cs_gpios[cs_num].gpio_num,
 				spi_cs_rsrcs[cs_num]);
 		if (rc) {
-			dev_err(dd->dev, "gpio_request for pin %d failed with "
+			dev_err(dd->dev, "[SPI] SPI_ERR: gpio_request for pin %d failed with "
 				"error %d\n", dd->cs_gpios[cs_num].gpio_num,
 				rc);
 			return;
@@ -1762,7 +1762,7 @@ static void msm_spi_workq(struct work_struct *work)
 	msm_spi_enable_irqs(dd);
 
 	if (!msm_spi_is_valid_state(dd)) {
-		dev_err(dd->dev, "%s: SPI operational state not valid\n",
+		dev_err(dd->dev, "[SPI] SPI_ERR: %s: SPI operational state not valid\n",
 			__func__);
 		status_error = 1;
 	}
@@ -1821,7 +1821,7 @@ static int msm_spi_transfer(struct spi_device *spi, struct spi_message *msg)
 		    (tr->bits_per_word &&
 		     (tr->bits_per_word < 4 || tr->bits_per_word > 32)) ||
 		    (tr->tx_buf == NULL && tr->rx_buf == NULL)) {
-			dev_err(&spi->dev, "Invalid transfer: %d Hz, %d bpw"
+			dev_err(&spi->dev, "[SPI] SPI_ERR: Invalid transfer: %d Hz, %d bpw"
 					   "tx=%p, rx=%p\n",
 					    tr->speed_hz, tr->bits_per_word,
 					    tr->tx_buf, tr->rx_buf);
@@ -1850,12 +1850,12 @@ static int msm_spi_setup(struct spi_device *spi)
 	u32              mask;
 
 	if (spi->bits_per_word < 4 || spi->bits_per_word > 32) {
-		dev_err(&spi->dev, "%s: invalid bits_per_word %d\n",
+		dev_err(&spi->dev, "[SPI] SPI_ERR: %s: invalid bits_per_word %d\n",
 			__func__, spi->bits_per_word);
 		rc = -EINVAL;
 	}
 	if (spi->chip_select > SPI_NUM_CHIPSELECTS-1) {
-		dev_err(&spi->dev, "%s, chip select %d exceeds max value %d\n",
+		dev_err(&spi->dev, "[SPI] SPI_ERR: %s, chip select %d exceeds max value %d\n",
 			__func__, spi->chip_select, SPI_NUM_CHIPSELECTS - 1);
 		rc = -EINVAL;
 	}
@@ -2045,7 +2045,7 @@ static void spi_dmov_tx_complete_func(struct msm_dmov_cmd *cmd,
 	struct msm_spi *dd;
 
 	if (!(result & DMOV_RSLT_VALID)) {
-		pr_err("Invalid DMOV result: rc=0x%08x, cmd = %p", result, cmd);
+		pr_err("[SPI] SPI_ERR: Invalid DMOV result: rc=0x%08x, cmd = %p", result, cmd);
 		return;
 	}
 	/* restore original context */
@@ -2055,7 +2055,7 @@ static void spi_dmov_tx_complete_func(struct msm_dmov_cmd *cmd,
 	else {
 		/* Error or flush */
 		if (result & DMOV_RSLT_ERROR) {
-			dev_err(dd->dev, "DMA error (0x%08x)\n", result);
+			dev_err(dd->dev, "[SPI] SPI_ERR: DMA error (0x%08x)\n", result);
 			dd->stat_dmov_tx_err++;
 		}
 		if (result & DMOV_RSLT_FLUSH) {
@@ -2065,11 +2065,11 @@ static void spi_dmov_tx_complete_func(struct msm_dmov_cmd *cmd,
 			 * DMA commands to be flushed.
 			 */
 			dev_info(dd->dev,
-				 "DMA channel flushed (0x%08x)\n", result);
+				 "[SPI] DMA channel flushed (0x%08x)\n", result);
 		}
 		if (err)
 			dev_err(dd->dev,
-				"Flush data(%08x %08x %08x %08x %08x %08x)\n",
+				"[SPI] SPI_ERR: Flush data(%08x %08x %08x %08x %08x %08x)\n",
 				err->flush[0], err->flush[1], err->flush[2],
 				err->flush[3], err->flush[4], err->flush[5]);
 		dd->cur_msg->status = -EIO;
@@ -2090,7 +2090,7 @@ static void spi_dmov_rx_complete_func(struct msm_dmov_cmd *cmd,
 	struct msm_spi *dd;
 
 	if (!(result & DMOV_RSLT_VALID)) {
-		pr_err("Invalid DMOV result(rc = 0x%08x, cmd = %p)",
+		pr_err("[SPI] SPI_ERR: Invalid DMOV result(rc = 0x%08x, cmd = %p)",
 		       result, cmd);
 		return;
 	}
@@ -2104,16 +2104,16 @@ static void spi_dmov_rx_complete_func(struct msm_dmov_cmd *cmd,
 	} else {
 		/** Error or flush  */
 		if (result & DMOV_RSLT_ERROR) {
-			dev_err(dd->dev, "DMA error(0x%08x)\n", result);
+			dev_err(dd->dev, "[SPI] SPI_ERR: DMA error(0x%08x)\n", result);
 			dd->stat_dmov_rx_err++;
 		}
 		if (result & DMOV_RSLT_FLUSH) {
 			dev_info(dd->dev,
-				"DMA channel flushed(0x%08x)\n", result);
+				"[SPI] DMA channel flushed(0x%08x)\n", result);
 		}
 		if (err)
 			dev_err(dd->dev,
-				"Flush data(%08x %08x %08x %08x %08x %08x)\n",
+				"[SPI] SPI_ERR: Flush data(%08x %08x %08x %08x %08x %08x)\n",
 				err->flush[0], err->flush[1], err->flush[2],
 				err->flush[3], err->flush[4], err->flush[5]);
 		dd->cur_msg->status = -EIO;
@@ -2225,7 +2225,7 @@ static int __init msm_spi_probe(struct platform_device *pdev)
 	master = spi_alloc_master(&pdev->dev, sizeof(struct msm_spi));
 	if (!master) {
 		rc = -ENOMEM;
-		dev_err(&pdev->dev, "master allocation failed\n");
+		dev_err(&pdev->dev, "[SPI] SPI_ERR: master allocation failed\n");
 		goto err_probe_exit;
 	}
 
@@ -2259,7 +2259,7 @@ static int __init msm_spi_probe(struct platform_device *pdev)
 			rc = pdata->dma_config();
 			if (rc) {
 				dev_warn(&pdev->dev,
-					"[SPI]%s: DM mode not supported\n",
+					"[SPI] %s: DM mode not supported\n",
 					__func__);
 				dd->use_dma = 0;
 				goto skip_dma_resources;
@@ -2290,7 +2290,7 @@ skip_dma_resources:
 			rc = pdata->gpio_config();
 			if (rc) {
 				dev_err(&pdev->dev,
-					"[SPI]%s: error configuring GPIOs\n",
+					"[SPI] SPI_ERR: %s: error configuring GPIOs\n",
 					__func__);
 				goto err_probe_gpio;
 			}
@@ -2301,7 +2301,7 @@ skip_dma_resources:
 		resource = platform_get_resource_byname(pdev, IORESOURCE_IO,
 							spi_rsrcs[i]);
 		dd->spi_gpios[i] = resource ? resource->start : -1;
-		pr_info("[Glenn] dd->spi_gpios[%d]: %d\n", i, dd->spi_gpios[i]);
+		pr_info("[SPI] dd->spi_gpios[%d]: %d\n", i, dd->spi_gpios[i]);
 	}
 
 	for (i = 0; i < ARRAY_SIZE(spi_cs_rsrcs); ++i) {
@@ -2344,7 +2344,7 @@ skip_dma_resources:
 
 		rc = remote_mutex_init(&dd->r_lock, &rmid);
 		if (rc) {
-			dev_err(&pdev->dev, "[SPI]%s: unable to init remote_mutex "
+			dev_err(&pdev->dev, "[SPI] SPI_ERR: %s: unable to init remote_mutex "
 				"(%s), (rc=%d)\n", rmid.r_spinlock_id,
 				__func__, rc);
 			goto err_probe_rlock_init;
@@ -2362,14 +2362,14 @@ skip_dma_resources:
 	dd->dev = &pdev->dev;
 	dd->clk = clk_get(&pdev->dev, "core_clk");
 	if (IS_ERR(dd->clk)) {
-		dev_err(&pdev->dev, "[SPI]%s: unable to get core_clk\n", __func__);
+		dev_err(&pdev->dev, "[SPI] SPI_ERR: %s: unable to get core_clk\n", __func__);
 		rc = PTR_ERR(dd->clk);
 		goto err_probe_clk_get;
 	}
 
 	dd->pclk = clk_get(&pdev->dev, "iface_clk");
 	if (IS_ERR(dd->pclk)) {
-		dev_err(&pdev->dev, "[SPI]%s: unable to get iface_clk\n", __func__);
+		dev_err(&pdev->dev, "[SPI] SPI_ERR: %s: unable to get iface_clk\n", __func__);
 		rc = PTR_ERR(dd->pclk);
 		goto err_probe_pclk_get;
 	}
@@ -2379,7 +2379,7 @@ skip_dma_resources:
 
 	rc = clk_enable(dd->clk);
 	if (rc) {
-		dev_err(&pdev->dev, "[SPI]%s: unable to enable core_clk\n",
+		dev_err(&pdev->dev, "[SPI] SPI_ERR: %s: unable to enable core_clk\n",
 			__func__);
 		goto err_probe_clk_enable;
 	}
@@ -2387,7 +2387,7 @@ skip_dma_resources:
 
 	rc = clk_enable(dd->pclk);
 	if (rc) {
-		dev_err(&pdev->dev, "[SPI]%s: unable to enable iface_clk\n",
+		dev_err(&pdev->dev, "[SPI] SPI_ERR: %s: unable to enable iface_clk\n",
 		__func__);
 		goto err_probe_pclk_enable;
 	}
@@ -2447,7 +2447,7 @@ skip_dma_resources:
 
 	rc = sysfs_create_group(&(dd->dev->kobj), &dev_attr_grp);
 	if (rc) {
-		dev_err(&pdev->dev, "[SPI]failed to create dev. attrs : %d\n", rc);
+		dev_err(&pdev->dev, "[SPI] SPI_ERR: failed to create dev. attrs : %d\n", rc);
 		goto err_attrs;
 	}
 
@@ -2505,7 +2505,7 @@ static int msm_spi_suspend(struct platform_device *pdev, pm_message_t state)
 	unsigned long      flags;
 	struct msm_spi_platform_data *pdata = pdev->dev.platform_data;
 
-	printk(KERN_INFO "[SPI]%s\n", __func__);
+	printk(KERN_INFO "[SPI] %s\n", __func__);
 	if (!master)
 		goto suspend_exit;
 	dd = spi_master_get_devdata(master);
@@ -2535,7 +2535,7 @@ static int msm_spi_resume(struct platform_device *pdev)
 	struct msm_spi    *dd;
 	struct msm_spi_platform_data *pdata = pdev->dev.platform_data;
 
-	printk(KERN_INFO "[SPI]%s\n", __func__);
+	printk(KERN_INFO "[SPI] %s\n", __func__);
 	if (!master)
 		goto resume_exit;
 	dd = spi_master_get_devdata(master);

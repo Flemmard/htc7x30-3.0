@@ -27,16 +27,15 @@
 #include <asm/io.h>
 #include <asm/mach-types.h>
 #include <mach/msm_fb-7x30.h>
-#include <mach/msm_iomap-7x30.h>
+#include <mach/msm_iomap.h>
 #include <mach/vreg.h>
 #include <mach/msm_panel.h>
 #include <mach/panel_id.h>
 
-
 #include "../board-saga.h"
 #include "../devices.h"
 #include "../proc_comm.h"
-#include "../../../../drivers/video/msm_7x30/mdp_hw.h"
+extern void config_gpio_table(uint32_t *table, int len);
 
 #if 1
 #define B(s...) printk(s)
@@ -45,21 +44,21 @@
 #endif
 #define LCM_GPIO_CFG(gpio, func) \
 PCOM_GPIO_CFG(gpio, func, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_4MA)
-extern int panel_type;
 struct vreg *vreg_ldo19, *vreg_ldo20;
 struct mddi_cmd {
-        unsigned char cmd;
-        unsigned delay;
-        unsigned char *vals;
-        unsigned len;
+	unsigned char cmd;
+	unsigned delay;
+	unsigned char *vals;
+	unsigned len;
 };
+
 #define prm_size 20
 #define LCM_CMD(_cmd, _delay, ...)                              \
 {                                                               \
-        .cmd = _cmd,                                            \
-        .delay = _delay,                                        \
-        .vals = (u8 []){__VA_ARGS__},                           \
-        .len = sizeof((u8 []){__VA_ARGS__}) / sizeof(u8)        \
+	.cmd = _cmd,                                            \
+	.delay = _delay,                                        \
+	.vals = (u8 []){__VA_ARGS__},                           \
+	.len = sizeof((u8 []){__VA_ARGS__}) / sizeof(u8)        \
 }
 #define DEFAULT_BRIGHTNESS 255
 #define PWM_USER_DEF	 		143
@@ -67,9 +66,9 @@ struct mddi_cmd {
 #define PWM_USER_DIM			 9
 #define PWM_USER_MAX			255
 
-#define PWM_HITACHI_DEF			174
-#define PWM_HITACHI_MIN			 10
-#define PWM_HITACHI_MAX			255
+#define PWM_HITACHI_DEF                        174
+#define PWM_HITACHI_MIN                         10
+#define PWM_HITACHI_MAX                        255
 enum {
 	GATE_ON = 1 << 0,
 };
@@ -97,23 +96,23 @@ static struct mddi_cmd saga_renesas_backlight_blank_cmd[] = {
 			 0x08, 0x00, 0x00, 0x00,),
 };
 static struct mddi_cmd gama[] = {
-           LCM_CMD(0xB0, 0, 0x04, 0x00, 0x00, 0x00),
-           LCM_CMD(0xC1, 0, 0x43, 0x00, 0x00, 0x00,
-                                 0x31, 0x00, 0x00, 0x00,
-                                 0x00, 0x00, 0x00, 0x00,
-                                 0x21, 0x00, 0x00, 0x00,
-                                 0x21, 0x00, 0x00, 0x00,
-                                 0x32, 0x00, 0x00, 0x00,
-                                 0x12, 0x00, 0x00, 0x00,
-                                 0x28, 0x00, 0x00, 0x00,
-                                 0x4A, 0x00, 0x00, 0x00,
-                                 0x1E, 0x00, 0x00, 0x00,
-                                 0xA5, 0x00, 0x00, 0x00,
-                                 0x0F, 0x00, 0x00, 0x00,
-                                 0x58, 0x00, 0x00, 0x00,
-                                 0x21, 0x00, 0x00, 0x00,
-                                 0x01, 0x00, 0x00, 0x00
-           ),
+        LCM_CMD(0xB0, 0, 0x04, 0x00, 0x00, 0x00),
+	LCM_CMD(0xC1, 0, 0x43, 0x00, 0x00, 0x00,
+		0x31, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00,
+		0x21, 0x00, 0x00, 0x00,
+		0x21, 0x00, 0x00, 0x00,
+		0x32, 0x00, 0x00, 0x00,
+		0x12, 0x00, 0x00, 0x00,
+		0x28, 0x00, 0x00, 0x00,
+		0x4A, 0x00, 0x00, 0x00,
+		0x1E, 0x00, 0x00, 0x00,
+		0xA5, 0x00, 0x00, 0x00,
+		0x0F, 0x00, 0x00, 0x00,
+		0x58, 0x00, 0x00, 0x00,
+		0x21, 0x00, 0x00, 0x00,
+		0x01, 0x00, 0x00, 0x00
+	),
            LCM_CMD(0xC8, 0, 0x2D, 0x00, 0x00, 0x00,
                                  0x2F, 0x00, 0x00, 0x00,
                                  0x31, 0x00, 0x00, 0x00,
@@ -138,61 +137,62 @@ static struct mddi_cmd gama[] = {
                                  0x0B, 0x00, 0x00, 0x00,
                                  0x02, 0x00, 0x00, 0x00,
                                  0x01, 0x00, 0x00, 0x00
-           ),
-           LCM_CMD(0xC9, 0, 0x00, 0x00, 0x00, 0x00,
+	),
+	LCM_CMD(0xC9, 0, 0x00, 0x00, 0x00, 0x00,
                                  0x0F, 0x00, 0x00, 0x00,
                                  0x18, 0x00, 0x00, 0x00,
                                  0x25, 0x00, 0x00, 0x00,
                                  0x33, 0x00, 0x00, 0x00,
-                                 0x4D, 0x00, 0x00, 0x00,
-                                 0x38, 0x00, 0x00, 0x00,
+		0x4D, 0x00, 0x00, 0x00,
+		0x38, 0x00, 0x00, 0x00,
                                  0x25, 0x00, 0x00, 0x00,
                                  0x18, 0x00, 0x00, 0x00,
                                  0x11, 0x00, 0x00, 0x00,
                                  0x02, 0x00, 0x00, 0x00,
                                  0x01, 0x00, 0x00, 0x00,
                                  0x00, 0x00, 0x00, 0x00,
-                                 0x0F, 0x00, 0x00, 0x00,
+		0x0F, 0x00, 0x00, 0x00,
                                  0x18, 0x00, 0x00, 0x00,
                                  0x25, 0x00, 0x00, 0x00,
                                  0x33, 0x00, 0x00, 0x00,
-                                 0x4D, 0x00, 0x00, 0x00,
-                                 0x38, 0x00, 0x00, 0x00,
+		0x4D, 0x00, 0x00, 0x00,
+		0x38, 0x00, 0x00, 0x00,
                                  0x25, 0x00, 0x00, 0x00,
                                  0x18, 0x00, 0x00, 0x00,
                                  0x11, 0x00, 0x00, 0x00,
                                  0x02, 0x00, 0x00, 0x00,
                                  0x01, 0x00, 0x00, 0x00
-           ),
+	),
            LCM_CMD(0xCA, 0, 0x27, 0x00, 0x00, 0x00,
                                  0x2A, 0x00, 0x00, 0x00,
-                                 0x2E, 0x00, 0x00, 0x00,
+		0x2E, 0x00, 0x00, 0x00,
                                  0x34, 0x00, 0x00, 0x00,
                                  0x3C, 0x00, 0x00, 0x00,
                                  0x51, 0x00, 0x00, 0x00,
                                  0x36, 0x00, 0x00, 0x00,
-                                 0x24, 0x00, 0x00, 0x00,
+		0x24, 0x00, 0x00, 0x00,
                                  0x16, 0x00, 0x00, 0x00,
                                  0x0C, 0x00, 0x00, 0x00,
                                  0x02, 0x00, 0x00, 0x00,
                                  0x01, 0x00, 0x00, 0x00,
                                  0x27, 0x00, 0x00, 0x00,
                                  0x2A, 0x00, 0x00, 0x00,
-                                 0x2E, 0x00, 0x00, 0x00,
+		0x2E, 0x00, 0x00, 0x00,
                                  0x34, 0x00, 0x00, 0x00,
                                  0x3C, 0x00, 0x00, 0x00,
                                  0x51, 0x00, 0x00, 0x00,
                                  0x36, 0x00, 0x00, 0x00,
-                                 0x24, 0x00, 0x00, 0x00,
+		0x24, 0x00, 0x00, 0x00,
                                  0x16, 0x00, 0x00, 0x00,
                                  0x0C, 0x00, 0x00, 0x00,
                                  0x02, 0x00, 0x00, 0x00,
                                  0x01, 0x00, 0x00, 0x00 ),
-           LCM_CMD(0xD5, 0, 0x14, 0x00, 0x00, 0x00,
-                                 0x14, 0x00, 0x00, 0x00
-           ),
+	LCM_CMD(0xD5, 0, 0x14, 0x00, 0x00, 0x00,
+		0x14, 0x00, 0x00, 0x00
+	),
            LCM_CMD(0xB0, 0, 0x03, 0x00, 0x00, 0x00),
 };
+
 static uint32_t display_on_gpio_table[] = {
 	LCM_GPIO_CFG(SAGA_LCD_PCLK_1, 1),
 	LCM_GPIO_CFG(SAGA_LCD_DE, 1),
@@ -331,6 +331,7 @@ static struct platform_device sonywvga_panel = {
                 .platform_data = &sonywvga_data,
         },
 };
+
 static void
 do_renesas_cmd(struct msm_mddi_client_data *client_data, struct mddi_cmd *cmd_table, ssize_t size)
 {
@@ -353,13 +354,11 @@ saga_shrink_pwm(int brightness, int user_def,
 		int user_min, int user_max, int panel_def,
 		int panel_min, int panel_max)
 {
-	if (brightness < PWM_USER_DIM) {
+	if (brightness < PWM_USER_DIM)
 		return 0;
-	}
 
-	if (brightness < user_min) {
+	if (brightness < user_min)
 		return panel_min;
-	}
 
 	if (brightness > user_def) {
 		brightness = (panel_max - panel_def) *
@@ -373,7 +372,7 @@ saga_shrink_pwm(int brightness, int user_def,
 			panel_min;
 	}
 
-        return brightness;
+	return brightness;
 }
 
 static void
@@ -384,7 +383,7 @@ saga_set_brightness(struct led_classdev *led_cdev,
 	unsigned int shrink_br = val;
 	struct mddi_cmd *pcmd = saga_renesas_backlight_blank_cmd;
 
-	//printk(KERN_DEBUG "set brightness = %d\n", val);
+	printk(KERN_DEBUG "set brightness = %d\n", val);
 
 	if (test_bit(GATE_ON, &renesas.status) == 0)
 		return;
@@ -470,6 +469,7 @@ static int
 saga_mddi_uninit(struct msm_mddi_bridge_platform_data *bridge_data,
 			struct msm_mddi_client_data *client_data)
 {
+	B(KERN_DEBUG "%s(%d)\n", __func__, __LINE__);
 	client_data->auto_hibernate(client_data, 0);
 	client_data->remote_write(client_data, 0x0, 0x10);
 	hr_msleep(72);
@@ -482,6 +482,7 @@ saga_panel_blank(struct msm_mddi_bridge_platform_data *bridge_data,
 			struct msm_mddi_client_data *client_data)
 {
 	B(KERN_DEBUG "%s\n", __func__);
+
 	client_data->remote_write(client_data, 0x04, 0xB0);
 	client_data->remote_write(client_data, 0x0, 0x28);
 	saga_backlight_switch(client_data,LED_OFF);
@@ -553,8 +554,8 @@ static void
 panel_renesas_fixup(uint16_t *mfr_name, uint16_t *product_code)
 {
 	printk("mddi fixup\n");
-	*mfr_name = 0xb9f6;
-	*product_code = 0x1408;
+		*mfr_name = 0xb9f6;
+		*product_code = 0x1408;
 }
 
 
@@ -591,6 +592,8 @@ int __init saga_init_panel(void)
         int ret = 0;
 	int rc = 0;
 
+	B(KERN_INFO "%s(%d): enter. panel_type 0x%08x\n", __func__, __LINE__, panel_type);
+
 	vreg_ldo19 = vreg_get(NULL, "wlan2");
 
 	if (IS_ERR(vreg_ldo19)) {
@@ -616,7 +619,6 @@ int __init saga_init_panel(void)
 		return -1;
 	}
 
-
 	if (is_sony_panel()){
 		rc = vreg_set_level(vreg_ldo20, 2600);
 		if (rc) {
@@ -624,6 +626,7 @@ int __init saga_init_panel(void)
 				__func__, rc);
 			return -1;
 		}
+
 		ret = platform_device_register(&sonywvga_panel);
 	}
 	else if (is_hitachi_panel()){
@@ -647,8 +650,8 @@ int __init saga_init_panel(void)
 		rc = platform_driver_register(&saga_backlight_driver);
 		if (rc)
 			return rc;
+
 	}
 
 	return ret;
 }
-
