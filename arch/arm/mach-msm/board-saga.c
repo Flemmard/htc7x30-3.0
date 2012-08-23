@@ -578,7 +578,7 @@ static struct bma150_platform_data gsensor_platform_data = {
 };
 
 static struct tps65200_platform_data tps65200_data = {
-	.charger_check = 0,
+	.gpio_chg_int = MSM_GPIO_TO_INT(PM8058_GPIO_PM_TO_SYS(SAGA_GPIO_CHG_INT)),
 };
 
 static struct i2c_board_info i2c_devices[] = {

@@ -191,7 +191,7 @@ static long bma_ioctl(struct file *file, unsigned int cmd,
 	void __user *argp = (void __user *)arg;
 
 	char rwbuf[8] = "";
-	long ret = -1;
+	int ret = -1;
 	short buf[8], temp;
 	int kbuf = 0;
 
@@ -475,7 +475,13 @@ static struct file_operations bma_fops = {
 	.owner = THIS_MODULE,
 	.open = bma_open,
 	.release = bma_release,
+	/*.ioctl = bma_ioctl,*/
+#if HAVE_COMPAT_IOCTL
+	.compat_ioctl = bma_ioctl,
+#endif
+#if HAVE_UNLOCKED_IOCTL
 	.unlocked_ioctl = bma_ioctl,
+#endif
 };
 
 static struct miscdevice bma_device = {
