@@ -35,7 +35,6 @@
 #include "../board-saga.h"
 #include "../devices.h"
 #include "../proc_comm.h"
-extern void config_gpio_table(uint32_t *table, int len);
 
 #if 1
 #define B(s...) printk(s)

@@ -1696,23 +1696,6 @@ static struct msm_pm_platform_data msm_pm_data[MSM_PM_SLEEP_MODE_NR] = {
 
 #ifdef CONFIG_SPI_QSD
 static struct spi_board_info msm_spi_board_info[] __initdata = {
-#ifdef CONFIG_SPI_DISPLAY
-	{
-		.modalias	= "spi_display",
-		.mode		= SPI_MODE_3,
-		.bus_num	= 0,
-		.chip_select	= 2,
-		.max_speed_hz	= 9963243,
-	},
-#else
-	{
-		.modalias	= "spi_qsd",
-		.mode		= SPI_MODE_3,
-		.bus_num	= 0,
-		.chip_select	= 2,
-		.max_speed_hz	= 10000000,
-	},
-#endif
 	{
 		.modalias	= "spi_oj",
 		.mode		= SPI_MODE_3,

@@ -1559,7 +1559,7 @@ static struct spi_board_info msm_spi_board_info[] __initdata = {
 		.mode		= SPI_MODE_3,
 		.bus_num	= 0,
 		.chip_select	= 2,
-		.max_speed_hz	= 9963243,
+		.max_speed_hz	= 10000000,
 	},
 #else
 	{
