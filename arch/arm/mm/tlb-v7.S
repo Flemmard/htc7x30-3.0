@@ -42,8 +42,8 @@ ENTRY(v7wbi_flush_user_tlb_range)
 	mov	r0, r0, lsl #PAGE_SHIFT
 #else
 	asid	r3, r3				@ mask ASID
-	orr	r0, r3, r0, lsl #PAGE_SHIFT	@ Create initial MVA
 #endif
+	orr	r0, r3, r0, lsl #PAGE_SHIFT	@ Create initial MVA
 	mov	r1, r1, lsl #PAGE_SHIFT
 1:
 #ifdef CONFIG_ARCH_MSM8X60
