@@ -26,3 +26,4 @@ obj-$(CONFIG_MACH_SHOOTER) += sp3d_reg_3d.o sp3d_reg_2d.o sp3d_reg_com.o sp3d_re
 obj-$(CONFIG_MACH_SHOOTER_K) += sp3d_reg_3d.o sp3d_reg_2d.o sp3d_reg_com.o sp3d_reg_cal.o s5k6aafx_reg_shooter.o qs_s5k4e1_reg.o s5k6aafx_reg_shooter_cob.o
 obj-$(CONFIG_MACH_SHOOTER_U) += sp3d_reg_3d.o sp3d_reg_2d.o sp3d_reg_com.o sp3d_reg_cal.o s5k6aafx_reg_shooter.o qs_s5k4e1_reg.o s5k6aafx_reg_shooter_cob.o
 obj-$(CONFIG_MACH_SHOOTER_CT) += sp3d_reg_3d.o sp3d_reg_2d.o sp3d_reg_com.o sp3d_reg_cal.o s5k6aafx_reg_shooter.o qs_s5k4e1_reg.o s5k6aafx_reg_shooter_cob.o
+obj-$(CONFIG_S5K4E1GX) += s5k4e1gx.o s5k4e1gx_reg.o

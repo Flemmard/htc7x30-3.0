@@ -21,9 +21,16 @@
 #include <linux/i2c.h>
 #include <linux/uaccess.h>
 #include <linux/miscdevice.h>
+//#include <media/msm_camera.h>
 #include <media/msm_camera_sensor.h>
 #include <mach/gpio.h>
+#ifdef CONFIG_MSM_CAMERA_8X60
+#include <mach/camera-8x60.h>
+#elif defined(CONFIG_MSM_CAMERA_7X30)
 #include <mach/camera-7x30.h>
+#else
+#include <mach/camera.h>
+#endif
 #include "s5k4e1gx.h"
 #include <linux/wakelock.h>
 #include <linux/slab.h>
@@ -155,6 +162,11 @@ static inline void allow_suspend(void)
 #define REG_MIPI_LANE_MODE		0x30E2
 #define MHz 1000000
 #define MCLK 24
+
+enum s5k4e1gx_reg_update_t{
+	REG_INIT,
+	REG_PERIODIC
+};
 
 struct reg_struct {
     // PLL Setting
@@ -317,9 +329,9 @@ struct reg_struct s5k4e1gx_reg_zero_shutter[1] = {
 		0x03,  /* h_binning                     REG=0x30A9 */
 		0xE8,  /* v_binning                     REG=0x300E */
 		0x07,  /* frame_length_lines_msb        REG=0x0340 */
-		0xB4,  /* frame_length_lines_lsb        REG=0x0341 */
+		0xEF,  /* Mu Lee for non-cont clock 0316 0xB4,*/  /* frame_length_lines_lsb        REG=0x0341 */
 		0x0A,  /* line_length_pck_msb           REG=0x0342 */
-		0xB2,  /* line_length_pck_lsb           REG=0x0343 */
+		0xF0,  /* Mu Lee for non-cont clock 0316 0xB2,*/  /* line_length_pck_lsb           REG=0x0343 */
 		0x10,  /* pclk_inv;                     REG=0x3110 */
 		0x0C,  /* pclk_delay;                   REG=0x3117 */
 		0x0A,  /* v_h_strength;                 REG=0x3119 */
@@ -333,9 +345,9 @@ struct reg_struct s5k4e1gx_reg_zero_shutter[1] = {
 		0x04,  /* coarse_integration_time_msb   REG=0x0202 */
 		0x12,  /* coarse_integration_time_lsb   REG=0x0203 */
 		1960,  /* size_h*/
-		  12,  /* blk_l*/
+		  71,  /*12*/  /* blk_l*/
 		2608,  /* size_w*/
-		130   /* blk_p*/
+		 192  /*130*/  /* blk_p*/
 	},
 };
 
@@ -449,7 +461,7 @@ struct s5k4e1gx_ctrl {
 	enum msm_s_resolution pict_res;
 	enum msm_s_resolution curr_res;
 	enum msm_s_test_mode  set_test;
-	enum msm_s_reg_update reg_update;
+	enum s5k4e1gx_reg_update_t reg_update;
 };
 
 static struct s5k4e1gx_ctrl *s5k4e1gx_ctrl;
@@ -642,6 +654,87 @@ static int32_t s5k4e1gx_i2c_read_w(unsigned short saddr, unsigned short raddr,
 	return rc;
 }
 
+static int s5k4e1gx_vreg_enable(struct platform_device *pdev)
+{
+	struct msm_camera_sensor_info *sdata = pdev->dev.platform_data;
+	int rc;
+	pr_info("[CAM]%s camera vreg on\n", __func__);
+
+	if (sdata->camera_power_on == NULL) {
+		pr_err("[CAM]sensor platform_data didnt register\n");
+		return -EIO;
+	}
+	rc = sdata->camera_power_on();
+	return rc;
+}
+
+static int s5k4e1gx_vreg_disable(struct platform_device *pdev)
+{
+	struct msm_camera_sensor_info *sdata = pdev->dev.platform_data;
+	int rc;
+	pr_info("[CAM]%s camera vreg off\n", __func__);
+
+	if (sdata->camera_power_off == NULL) {
+		pr_err("[CAM]sensor platform_data didnt register\n");
+		return -EIO;
+	}
+	rc = sdata->camera_power_off();
+	return rc;
+}
+
+static int s5k4e1gx_common_deinit(const struct msm_camera_sensor_info *sdata)
+{
+	int32_t rc = 0;
+	pr_info("[CAM]common_deinit");
+	/* follow Sensor SPEC */
+	mdelay(1);
+
+	/* MCLK off */
+	sdata->pdata->camera_gpio_off();
+	mdelay(1);
+
+	if (sdata->sensor_reset) {
+		pr_info("sensor_reset is true to pull low it\n");
+#if 0
+		gpio_set_value(sdata->sensor_reset, 0);
+#else
+		rc = gpio_request(sdata->sensor_reset, "s5k4e1gx");
+		if (!rc)
+			gpio_direction_output(sdata->sensor_reset, 0);
+		else
+			pr_err("[CAM]GPIO (%d) request failed\n",
+					sdata->sensor_reset);
+		gpio_free(sdata->sensor_reset);
+#endif
+	}
+
+	if (sdata->vcm_pwd) {
+		rc = gpio_request(sdata->vcm_pwd, "s5k4e1gx");
+		if (!rc)
+			gpio_direction_output(sdata->vcm_pwd, 0);
+		else
+			pr_err("[CAM]GPIO (%d) request faile\n",
+					sdata->vcm_pwd);
+		gpio_free(sdata->vcm_pwd);
+	}
+
+	pr_info("[CAM]common_deinit: s5k4e1gx_vreg_disable");
+	s5k4e1gx_vreg_disable(s5k4e1_pdev);
+
+	return 0;
+}
+
+static int s5k4e1gx_common_init(const struct msm_camera_sensor_info *data)
+{
+	int rc = 0;
+
+	rc = s5k4e1gx_vreg_enable(s5k4e1_pdev);
+	if (rc < 0)
+		pr_err("[CAM]s5k4e1gx_sensor_open_init fail\n");
+
+	return 1;
+}
+
 static int s5k4e1gx_probe_init_done(const struct msm_camera_sensor_info *data)
 {
 	gpio_free(data->sensor_reset);
@@ -657,15 +750,19 @@ static int s5k4e1gx_probe_init_sensor(const struct msm_camera_sensor_info *data)
 
 	struct msm_camera_sensor_info *sdata = s5k4e1_pdev->dev.platform_data;
 
+	if (!data->power_down_disable) {
+		pr_info("[CAM]s5k4e1gx_sensor_init(): pull high sensor_reset pin\n");
+		gpio_set_value(data->sensor_reset, 1);
+	} else{
 	rc = gpio_request(data->sensor_reset, "s5k4e1gx");
 	if (!rc) {
-		gpio_direction_output(data->sensor_reset, 0);
-		mdelay(5);
+			/*gpio_direction_output(data->sensor_reset, 0);
+			mdelay(5);*/
 		gpio_direction_output(data->sensor_reset, 1);
 	}
 	else
 		goto init_probe_done;
-
+	}
 	mdelay(20);
 
 	pr_info("[CAM]s5k4e1gx_sensor_init(): reseting sensor.\n");
@@ -694,7 +791,6 @@ static int s5k4e1gx_probe_init_sensor(const struct msm_camera_sensor_info *data)
 		goto init_probe_fail;
 
 	/* Add Lens Correction Common Setting For Maverick*/
-        /*
 	if (!sdata->sensor_lc_disable) {
 		pr_info("[CAM]sensor_lc_disable=%d\n", sdata->sensor_lc_disable);
 
@@ -703,7 +799,6 @@ static int s5k4e1gx_probe_init_sensor(const struct msm_camera_sensor_info *data)
 		if (rc < 0)
 			goto init_probe_fail;
 	}
-        */
 
     /* Add analog settings For Maverick*/
 	rc = s5k4e1gx_i2c_read_b(s5k4e1gx_client->addr, S5K4E1GX_REVISION_ID, &evt_ver);
@@ -716,7 +811,7 @@ static int s5k4e1gx_probe_init_sensor(const struct msm_camera_sensor_info *data)
 
 
     /* Modified the Setting for different sensor revision */
-	if (machine_is_saga()) {
+	if (sdata->csi_if) {
 		printk("[CAM]use analog_settings_saga\n");
 		if (sdata->zero_shutter_mode)
 		rc = s5k4e1gx_i2c_write_table(
@@ -844,7 +939,7 @@ static int s5k4e1gx_probe_init_sensor(const struct msm_camera_sensor_info *data)
 	}
 #endif
 
-	if (data->camera_clk_switch != NULL) {
+	if (data->camera_clk_switch != NULL && !data->csi_if) {
 	rc = s5k4e1gx_i2c_read_b(s5k4e1gx_client->addr, 0x3110, &reg_status);
 		if (rc < 0) {
 			pr_info("[CAM]%s: 0x3110 read_b fail\n", __func__);
@@ -979,7 +1074,9 @@ static int32_t s5k4e1gx_test(enum msm_s_test_mode mo)
 
 static void s5k4e1gx_extra_settings_for_mipi(enum msm_s_setting rt)
 {
-	if (machine_is_saga()) {
+	struct msm_camera_sensor_info *sdata = s5k4e1_pdev->dev.platform_data;
+
+	if (sdata->csi_if) {
 		if (rt == S_RES_PREVIEW) {
 			/* outif_enable[7], data_type[5:0](2Bh = bayer 10bit) */
 			s5k4e1gx_i2c_write_b(s5k4e1gx_client->addr, 0x30BF, 0xAB);
@@ -1023,9 +1120,9 @@ static int32_t s5k4e1gx_setting(enum msm_s_reg_update rupdate,
 			s5k4e1gx_csi_params.lane_cnt = 2;
 			s5k4e1gx_csi_params.lane_assign = 0xe4;
 			s5k4e1gx_csi_params.dpcm_scheme = 0;
-			s5k4e1gx_csi_params.settle_cnt = 30;/*0120: QCT //20;*/
+			s5k4e1gx_csi_params.settle_cnt = 33;/*35;0120: QCT //20;*/
 			rc = msm_camio_csi_config(&s5k4e1gx_csi_params);
-
+			msleep(10);
 			s5k4e1gx_ctrl->reg_update = S_UPDATE_PERIODIC;
 		}
 	}
@@ -1033,7 +1130,7 @@ static int32_t s5k4e1gx_setting(enum msm_s_reg_update rupdate,
 	switch (rupdate) {
 	case S_UPDATE_PERIODIC:
 		/* 1126 for improve shutter of MIPI */
-		if (machine_is_saga() && sdata->zero_shutter_mode) {
+		if ((sdata->csi_if) && sdata->zero_shutter_mode) {
 		pr_info("[CAM]%s:return 0 (S_UPDATE_PERIODIC state)\n", __func__);
 			return 0;
 		}
@@ -1112,20 +1209,20 @@ static int32_t s5k4e1gx_setting(enum msm_s_reg_update rupdate,
 			}
 
 			/* Lens Correction for Preview or Capture */
-                        if (!sdata->sensor_lc_disable) {
-                          pr_info("[CAM]sensor_lc_disable=%d\n", sdata->sensor_lc_disable);
-                          if (rt == S_RES_PREVIEW) {
-                            rc = s5k4e1gx_i2c_write_table(s5k4e1gx_regs.lc_preview,
-                                                          s5k4e1gx_regs.lc_preview_size);
-                            if (rc < 0)
-                              return rc;
-                          } else {
-                            rc = s5k4e1gx_i2c_write_table(s5k4e1gx_regs.lc_capture,
-                                                          s5k4e1gx_regs.lc_capture_size);
-                            if (rc < 0)
-                              return rc;
-                          }
-                        }
+		if (!sdata->sensor_lc_disable) {
+		pr_info("[CAM]sensor_lc_disable=%d\n", sdata->sensor_lc_disable);
+			if (rt == S_RES_PREVIEW) {
+			rc = s5k4e1gx_i2c_write_table(s5k4e1gx_regs.lc_preview,
+					s5k4e1gx_regs.lc_preview_size);
+				if (rc < 0)
+					return rc;
+			} else {
+			rc = s5k4e1gx_i2c_write_table(s5k4e1gx_regs.lc_capture,
+					s5k4e1gx_regs.lc_capture_size);
+				if (rc < 0)
+					return rc;
+			}
+		}
 
 			num_lperf = (uint16_t)
 				((s5k4e1gx_reg_pat[rt].frame_length_lines_msb << 8)
@@ -1261,6 +1358,7 @@ static int32_t s5k4e1gx_setting(enum msm_s_reg_update rupdate,
 			s5k4e1gx_reg_zero_shutter[rt].MIPI_data_lane_modes},
 			{REG_DPHY_BANDCTRL,
 			s5k4e1gx_reg_zero_shutter[rt].DPHY_bandctrl},
+			{0x30E8,0x07}, /* non-continue mode by sensor HW bug */
 			/* Read Mode Setting */
 			{S5K4E1GX_REG_READ_MODE,
 			s5k4e1gx_reg_pat[rt].read_mode},
@@ -1326,10 +1424,10 @@ static int32_t s5k4e1gx_setting(enum msm_s_reg_update rupdate,
 
 			if (sdata->csi_if) {
 				 /* 1126 for improve shutter of MIPI */
-                          if (!sdata->zero_shutter_mode)
+			  if (!sdata->zero_shutter_mode)
 				s5k4e1gx_extra_settings_for_mipi(rt);
-                          else
-                            pr_info("[CAM]%s: improve shutter lag\n", __func__);
+			  else
+				pr_info("[CAM]%s: improve shutter lag\n", __func__);
 			} else {
 				/*awii: for the analog*/
 				if (fps_mode_sel == 1) {
@@ -1351,23 +1449,24 @@ static int32_t s5k4e1gx_setting(enum msm_s_reg_update rupdate,
 
 		    /* Write Setting Table */
 			/* 1126 for improve shutter of MIPI */
-                        if (sdata->csi_if && sdata->zero_shutter_mode) {
-                          pr_info("[CAM]s5k4e1gx_setting(): setup tb1_4\n");
-                          rc = s5k4e1gx_i2c_write_table(&tbl_4[0],
-                                                        ARRAY_SIZE(tbl_4));
-                        } else {
+			if (sdata->csi_if && sdata->zero_shutter_mode) {
+			pr_info("[CAM]s5k4e1gx_setting(): setup tb1_4\n");
+			rc = s5k4e1gx_i2c_write_table(&tbl_4[0],
+					ARRAY_SIZE(tbl_4));
+			} else {
 			rc = s5k4e1gx_i2c_write_table(&tbl_3[0],
 					ARRAY_SIZE(tbl_3));
 				if (rc < 0)
 					return rc;
-                }
+			}
 
+			msleep(20);
 			/* Streaming ON */
 			/* 1126 for improve shutter of MIPI */
 			if (!sdata->csi_if)
 			s5k4e1gx_i2c_write_b(s5k4e1gx_client->addr, 0x3110, 0x10);
 
-#ifdef CONFIG_MSM_CAMERA_7X30
+#if 0 /*#ifdef CONFIG_MSM_CAMERA_7X30*/
 	/*only streaming on in preview mode and zero_shutter_mode on MIPI*/
 	if (rt == S_RES_PREVIEW && sdata->csi_if && sdata->zero_shutter_mode) {
 		pr_info("[CAM]%s: delay 200ms before Streaming ON\n", __func__);
@@ -1375,9 +1474,12 @@ static int32_t s5k4e1gx_setting(enum msm_s_reg_update rupdate,
 	}
 #endif
 
+
 			rc = s5k4e1gx_i2c_write_b(s5k4e1gx_client->addr,
 					S5K4E1GX_REG_MODE_SELECT,
 					S5K4E1GX_MODE_SELECT_STREAM);
+				pr_info("[CAM]%s Streaming On", __func__);
+
 				if (rc < 0)
 					return rc;
 
@@ -1497,7 +1599,7 @@ static int s5k4e1gx_sensor_open_init(struct msm_camera_sensor_info *data)
 	}
 
 	/* 1126 for improve shutter of MIPI */
-	if (machine_is_saga()) {
+	if (sinfo->csi_if) {
 	pr_info("[CAM]%s: get s5k4e1gx_reg_zero_shutter setting\n", __func__);
 	memcpy(&(s5k4e1gx_reg_pat[S_RES_PREVIEW]),
 		&(s5k4e1gx_reg_zero_shutter[0]), sizeof(struct reg_struct));
@@ -1512,12 +1614,17 @@ static int s5k4e1gx_sensor_open_init(struct msm_camera_sensor_info *data)
 		goto init_done;
 	}
 
+	if (!data->power_down_disable && data) { /* power down method */
+		pr_info("open_init(): power on\n");
+		s5k4e1gx_common_init(data);
+	}
+
 	s5k4e1gx_ctrl->fps_divider = 1 * 0x00000400;
 	s5k4e1gx_ctrl->pict_fps_divider = 1 * 0x00000400;
 	s5k4e1gx_ctrl->set_test = S_TEST_OFF;
 	s5k4e1gx_ctrl->prev_res = S_QTR_SIZE;
 	s5k4e1gx_ctrl->pict_res = S_FULL_SIZE;
-	s5k4e1gx_ctrl->reg_update = S_REG_INIT;
+	s5k4e1gx_ctrl->reg_update = REG_INIT;
 
 	if (data)
 		s5k4e1gx_ctrl->sensordata = data;
@@ -1533,24 +1640,30 @@ static int s5k4e1gx_sensor_open_init(struct msm_camera_sensor_info *data)
 		pr_info("[CAM]%s: switch clk\n", __func__);
 		data->camera_clk_switch();
 		msleep(10);
-
+	}
 		/* Configure CAM GPIO ON (CAM_MCLK)*/
 		pr_info("[CAM]%s msm_camio_probe_on()\n", __func__);
-		msm_camio_probe_on(s5k4e1_pdev);
-	}
+
+		msm_camio_probe_on(s5k4e1_pdev); /* VFE three internal power */
+		data->pdata->camera_gpio_on(); /*sensor add it */
 
 	/* enable mclk first */
 	msm_camio_clk_rate_set(24000000);
 
 
-	/* Force reset MIPI sensor for SAGA */
-	/*1126 for improve shutter of MIPI*/
-	if (machine_is_saga() && !data->zero_shutter_mode) {
-		rc = s5k4e1gx_probe_init_sensor(data);
+	if (!data->power_down_disable) {
+		rc = s5k4e1gx_probe_init_sensor(data); /*pull high sensor powerdown pin and SW standby*/
 		if (rc < 0)
-			printk("[CAM]s5k4e1gx_sensor_open_init() call s5k4e1gx_probe_init_sensor() failed !!!\n");
+			pr_err("[CAM]s5k4e1gx_sensor_open_init() call s5k4e1gx_probe_init_sensor() failed !!!\n");
+	} else{
+		/* Force reset MIPI sensor for SAGA */
+		/*1126 for improve shutter of MIPI*/
+		if ((sinfo->csi_if) && !data->zero_shutter_mode) {
+			rc = s5k4e1gx_probe_init_sensor(data);
+			if (rc < 0)
+				printk("[CAM]s5k4e1gx_sensor_open_init() call s5k4e1gx_probe_init_sensor() failed !!!\n");
+		}
 	}
-
 
 	/* for parallel interface */
 	if (!sinfo->csi_if) {
@@ -1562,7 +1675,7 @@ static int s5k4e1gx_sensor_open_init(struct msm_camera_sensor_info *data)
 	if (s5k4e1gx_ctrl->prev_res == S_QTR_SIZE)
 		rc = s5k4e1gx_setting(S_REG_INIT, S_RES_PREVIEW);
 	else {/*1126 for improve shutter of MIPI*/
-		if (machine_is_saga() && sinfo->zero_shutter_mode)
+		if ((sinfo->csi_if) && sinfo->zero_shutter_mode)
 			rc = s5k4e1gx_setting(S_REG_INIT, S_RES_PREVIEW);
 		else
 			rc = s5k4e1gx_setting(S_REG_INIT, S_RES_CAPTURE);
@@ -1617,22 +1730,29 @@ static int s5k4e1gx_sensor_release(void)
 	struct msm_camera_sensor_info *sdata = s5k4e1_pdev->dev.platform_data;
 
 	mutex_lock(&s5k4e1gx_mutex);
-	/*SW stand by*/
-	s5k4e1gx_power_down();
-	/*HW stand by*/
-	if (s5k4e1gx_ctrl) {
-		gpio_request(s5k4e1gx_ctrl->sensordata->vcm_pwd, "s5k4e1gx");
-		gpio_direction_output(s5k4e1gx_ctrl->sensordata->vcm_pwd, 0);
-		gpio_free(s5k4e1gx_ctrl->sensordata->vcm_pwd);
-	}
+	if (!sdata->power_down_disable && sdata) { /* power down method */
+		/* sw standby */
+		s5k4e1gx_power_down();
+		if (s5k4e1gx_ctrl)
+		s5k4e1gx_common_deinit(s5k4e1gx_ctrl->sensordata);
+	} else { /* SW standby */
+		/*SW stand by*/
+		s5k4e1gx_power_down();
+		/*HW stand by*/
+		if (s5k4e1gx_ctrl) {
+			gpio_request(s5k4e1gx_ctrl->sensordata->vcm_pwd, "s5k4e1gx");
+			gpio_direction_output(s5k4e1gx_ctrl->sensordata->vcm_pwd, 0);
+			gpio_free(s5k4e1gx_ctrl->sensordata->vcm_pwd);
+		}
 
-	if (s5k4e1gx_ctrl) {
-		kfree(s5k4e1gx_ctrl);
-		s5k4e1gx_ctrl = NULL;
-	}
-
+		if (s5k4e1gx_ctrl != NULL) {
+			/*kfree(s5k4e1gx_ctrl);*/
+			s5k4e1gx_ctrl = NULL;
+		}
+	} /*if power down method */
 	allow_suspend();
 
+#if 0
 	if (sdata->camera_clk_switch != NULL && sdata->cam_select_pin) {
 	/*0730: optical ask : CLK switch to Main Cam after 2nd Cam release*/
 	pr_info("[CAM]%s: doing clk switch to Main CAM)\n", __func__);
@@ -1645,10 +1765,11 @@ static int s5k4e1gx_sensor_release(void)
 
 	msleep(5);
 	/* CLK switch set 0 */
+	}
+#endif
 
 	pr_info("[CAM]%s msm_camio_probe_off()\n", __func__);
 	msm_camio_probe_off(s5k4e1_pdev);
-	}
 
 	pr_info("[CAM]s5k4e1gx_release completed\n");
 	mutex_unlock(&s5k4e1gx_mutex);
@@ -2421,6 +2542,15 @@ static int s5k4e1gx_sensor_probe(struct msm_camera_sensor_info *info,
 	pr_info("[CAM]s5k4e1gx s->node %d\n", s->node);
 	sensor_probe_node = s->node;
 
+	if (!info->power_down_disable) { /* power down method */
+		info->pdata->camera_gpio_on();
+
+		if (rc < 0) {
+			pr_err("[CAM]s5k4e1gx_sensor_open_init fail sensor power on error\n");
+			goto probe_fail;
+		}
+	}
+
 	/*switch PCLK and MCLK to Main cam*/
 	if (info->camera_clk_switch != NULL) {
 		pr_info("[CAM]s5k4e1gx: s5k4e1gx_sensor_probe: switch clk\n");
@@ -2430,7 +2560,7 @@ static int s5k4e1gx_sensor_probe(struct msm_camera_sensor_info *info,
 	msm_camio_clk_rate_set(24000000);
 	mdelay(20);
 
-	rc = s5k4e1gx_probe_init_sensor(info);
+	rc = s5k4e1gx_probe_init_sensor(info);/* <-- SW standby and read id*/
 	if (rc < 0)
 		goto probe_fail;
 
@@ -2441,6 +2571,11 @@ static int s5k4e1gx_sensor_probe(struct msm_camera_sensor_info *info,
 	s5k4e1gx_probe_init_done(info);
 	s5k4e1gx_sysfs_init();
 	info->preview_skip_frame = s5k4e1gx_preview_skip_frame;
+
+	if (!info->power_down_disable) {
+		s5k4e1gx_common_deinit(info);
+	}
+
 	return rc;
 
 probe_fail:
@@ -2449,7 +2584,7 @@ probe_fail:
 }
 
 
-
+#if 0
 static int s5k4e1gx_vreg_enable(struct platform_device *pdev)
 {
 	struct msm_camera_sensor_info *sdata = pdev->dev.platform_data;
@@ -2464,7 +2599,7 @@ static int s5k4e1gx_vreg_enable(struct platform_device *pdev)
 	return rc;
 }
 
-#if 0
+
 static int s5k4e1gx_vreg_disable(struct platform_device *pdev)
 {
 	struct msm_camera_sensor_info *sdata = pdev->dev.platform_data;
@@ -2494,15 +2629,14 @@ static int __s5k4e1gx_probe(struct platform_device *pdev)
 static struct platform_driver msm_camera_driver = {
 	.probe = __s5k4e1gx_probe,
 	.driver = {
-    .name = "msm_camera_s5k4e1gx",
-    .owner = THIS_MODULE,
+		.name = "msm_camera_s5k4e1gx",
 	},
 };
 
 static int __init s5k4e1gx_init(void)
 {
 	printk("[CAM]s5k4e1gx_init\n");
-        return platform_driver_register(&msm_camera_driver);
+	return platform_driver_register(&msm_camera_driver);
 }
 
 static void __exit s5k4e1gx_exit(void){
@@ -2514,7 +2648,6 @@ module_exit(s5k4e1gx_exit);
 
 MODULE_DESCRIPTION("camera sensor driver");
 MODULE_LICENSE("GPL");
-
 
 
 

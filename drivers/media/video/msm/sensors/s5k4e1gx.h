@@ -20,7 +20,7 @@
 #define CAMSENSOR_S5K4E1GX
 
 #include <linux/types.h>
-#include <mach/camera-7x30.h>
+#include <mach/camera.h>
 
 struct s5k4e1gx_i2c_reg_conf {
 	unsigned short waddr;

@@ -48,7 +48,7 @@ obj-$(CONFIG_MACH_PRIMOC) += s5k4e5yx.o s5k4e5yx_reg_pro.o
 obj-$(CONFIG_MACH_KINGDOM) += s5k4e5yx.o s5k4e5yx_reg.o
 endif
 
-obj-$(CONFIG_S5K4E1GX) += s5k4e1gx.o s5k4e1gx_reg.o
+#obj-$(CONFIG_S5K4E1GX) += s5k4e1gx.o s5k4e1gx_reg.o
 ifdef CONFIG_S5K6AAFX
 obj-$(CONFIG_MACH_FLYER) += s5k6aafx.o s5k6aafx_reg_flyer.o s5k6aafx_reg_flyer_cob.o
 endif
@@ -95,7 +95,7 @@ else
       ifdef CONFIG_MACH_GLACIER
         obj-$(CONFIG_MT9V113) += mt9v113.o mt9v113_reg_lens_9218.o
       else
-        obj-$(CONFIG_MT9V113) += mt9v113.o mt9v113_reg.o
+        obj-$(CONFIG_MT9V113) += mt9v113.o mt9v113_reg_lens_9251.o
       endif
     endif
   endif
