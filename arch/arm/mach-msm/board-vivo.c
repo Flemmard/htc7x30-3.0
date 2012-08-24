@@ -1489,12 +1489,11 @@ static int Vivo_s5k6aafx_vreg_off(void)
 }
 #endif
 
-static int config_camera_on_gpios(void)
+static void config_camera_on_gpios(void)
 {
 	pr_info("[CAM] config_camera_on_gpios\n");
 	config_gpio_table(camera_on_gpio_table,
 		ARRAY_SIZE(camera_on_gpio_table));
-	return 0;
 }
 
 static void config_camera_off_gpios(void)
