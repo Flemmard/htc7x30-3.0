@@ -168,19 +168,6 @@ unsigned int vivo_get_engineerid(void)
 		(((drvstr) & 0xF) << 17))
 
 
-static void config_gpio_table(uint32_t *table, int len)
-{
-	int n, rc;
-	for (n = 0; n < len; n++) {
-		rc = gpio_tlmm_config(table[n], GPIO_CFG_ENABLE);
-		if (rc) {
-			pr_err("[CAM] %s: gpio_tlmm_config(%#x)=%d\n",
-				__func__, table[n], rc);
-			break;
-		}
-	}
-}
-
 #if 0
 #endif
 
@@ -3153,13 +3140,6 @@ static int msm_qsd_spi_dma_config(void)
 
 	return ret;
 }
-
-static struct platform_device qsd_device_spi = {
-	.name		= "spi_qsd",
-	.id		= 0,
-	.num_resources	= ARRAY_SIZE(qsd_spi_resources),
-	.resource	= qsd_spi_resources,
-};
 
 #ifdef CONFIG_SPI_QSD
 static struct spi_board_info lcdc_sharp_spi_board_info[] __initdata = {
