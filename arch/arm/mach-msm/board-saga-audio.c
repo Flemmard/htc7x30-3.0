@@ -17,24 +17,15 @@
 #include <linux/mfd/pmic8058.h>
 #include <linux/mfd/marimba.h>
 #include <linux/delay.h>
-
+#include <mach/tpa2051d3.h>
 #include <mach/gpio.h>
-#include <mach/dal.h>
 #include <mach/pmic.h>
+#include <mach/dal.h>
 #include "board-saga.h"
-#include "devices.h"
-#if defined(CONFIG_MSM7KV2_1X_AUDIO)
-#include <mach/qdsp5v2_1x/snddev_icodec.h>
-#include <mach/qdsp5v2_1x/snddev_ecodec.h>
-#include <mach/qdsp5v2_1x/audio_def.h>
-#include <mach/qdsp5v2_1x/voice.h>
-#endif
-#if defined(CONFIG_MSM7KV2_AUDIO)
 #include <mach/qdsp5v2_2x/snddev_icodec.h>
 #include <mach/qdsp5v2_2x/snddev_ecodec.h>
 #include <mach/qdsp5v2_2x/audio_def.h>
 #include <mach/qdsp5v2_2x/voice.h>
-#endif
 #include <mach/htc_acoustic_7x30.h>
 #include <mach/htc_acdb_7x30.h>
 #include <linux/spi/spi_aic3254.h>
@@ -42,13 +33,17 @@
 static struct mutex bt_sco_lock;
 static int curr_rx_mode;
 static atomic_t aic3254_ctl = ATOMIC_INIT(0);
+void saga_back_mic_enable(int);
+
+
 
 #define BIT_SPEAKER	(1 << 0)
 #define BIT_HEADSET	(1 << 1)
 #define BIT_RECEIVER	(1 << 2)
 #define BIT_FM_SPK	(1 << 3)
 #define BIT_FM_HS	(1 << 4)
-
+#define PMGPIO(x) (x-1)
+#define SAGA_ACDB_SMEM_SIZE        (0xE000)
 #define SAGA_ACDB_RADIO_BUFFER_SIZE (1024 * 3072)
 
 static struct q5v2_hw_info q5v2_audio_hw[Q5V2_HW_COUNT] = {
@@ -103,30 +98,37 @@ static struct q5v2_hw_info q5v2_audio_hw[Q5V2_HW_COUNT] = {
 };
 
 static unsigned aux_pcm_gpio_off[] = {
-	GPIO_CFG(SAGA_GPIO_BT_PCM_OUT, 0, GPIO_CFG_INPUT,
-			GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
-	GPIO_CFG(SAGA_GPIO_BT_PCM_IN, 0, GPIO_CFG_INPUT,
-			GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
-	GPIO_CFG(SAGA_GPIO_BT_PCM_SYNC, 0, GPIO_CFG_INPUT,
-			GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
-	GPIO_CFG(SAGA_GPIO_BT_PCM_CLK, 0, GPIO_CFG_INPUT,
-			GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),
+	GPIO_CFG(138, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),   /* PCM_DOUT */
+	GPIO_CFG(139, 0, GPIO_CFG_INPUT,  GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),   /* PCM_DIN  */
+	GPIO_CFG(140, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),   /* PCM_SYNC */
+	GPIO_CFG(141, 0, GPIO_CFG_INPUT, GPIO_CFG_PULL_DOWN, GPIO_CFG_2MA),   /* PCM_CLK  */
 };
 
+
 static unsigned aux_pcm_gpio_on[] = {
-	GPIO_CFG(SAGA_GPIO_BT_PCM_OUT, 1, GPIO_CFG_OUTPUT,
-			GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
-	GPIO_CFG(SAGA_GPIO_BT_PCM_IN, 1, GPIO_CFG_INPUT,
-			GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
-	GPIO_CFG(SAGA_GPIO_BT_PCM_SYNC, 1, GPIO_CFG_OUTPUT,
-			GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
-	GPIO_CFG(SAGA_GPIO_BT_PCM_CLK, 1, GPIO_CFG_OUTPUT,
-			GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
+	GPIO_CFG(138, 1, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),   /* PCM_DOUT */
+	GPIO_CFG(139, 1, GPIO_CFG_INPUT,  GPIO_CFG_NO_PULL, GPIO_CFG_2MA),   /* PCM_DIN  */
+	GPIO_CFG(140, 1, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),   /* PCM_SYNC */
+	GPIO_CFG(141, 1, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL, GPIO_CFG_2MA),   /* PCM_CLK  */
 };
+
+static void config_gpio_table(uint32_t *table, int len)
+{
+	int n, rc;
+	for (n = 0; n < len; n++) {
+		rc = gpio_tlmm_config(table[n], GPIO_CFG_ENABLE);
+		if (rc) {
+			pr_err("[CAM] %s: gpio_tlmm_config(%#x)=%d\n",
+				__func__, table[n], rc);
+			break;
+		}
+	}
+}
 
 void saga_snddev_poweramp_on(int en)
 {
 	pr_aud_info("%s %d\n", __func__, en);
+
 	if (en) {
 		gpio_set_value(PM8058_GPIO_PM_TO_SYS(SAGA_AUD_SPK_EN), 1);
 		mdelay(30);
@@ -143,6 +145,7 @@ void saga_snddev_poweramp_on(int en)
 void saga_snddev_hsed_pamp_on(int en)
 {
 	pr_aud_info("%s %d\n", __func__, en);
+
 	if (en) {
 		msleep(60);
 		gpio_set_value(PM8058_GPIO_PM_TO_SYS(SAGA_AUD_HP_EN), 1);
@@ -191,9 +194,11 @@ void saga_snddev_bt_sco_pamp_on(int en)
 		if (--bt_sco_refcount == 0) {
 			config_gpio_table(aux_pcm_gpio_off,
 					ARRAY_SIZE(aux_pcm_gpio_off));
+
 			gpio_set_value(SAGA_GPIO_BT_PCM_OUT, 0);
 			gpio_set_value(SAGA_GPIO_BT_PCM_SYNC, 0);
 			gpio_set_value(SAGA_GPIO_BT_PCM_CLK, 0);
+
 		}
 	}
 	mutex_unlock(&bt_sco_lock);
@@ -211,7 +216,8 @@ void saga_mic_bias_enable(int en, int shift)
 
 void saga_snddev_imic_pamp_on(int en)
 {
-	pr_aud_info("%s %d\n", __func__, en);
+	pr_aud_info("%s: %d\n", __func__, en);
+
 	if (en) {
 		pmic_hsed_enable(PM_HSED_CONTROLLER_0, PM_HSED_ENABLE_ALWAYS);
 		pmic_hsed_enable(PM_HSED_CONTROLLER_2, PM_HSED_ENABLE_ALWAYS);
@@ -258,6 +264,7 @@ void saga_snddev_fmspk_pamp_on(int en)
 
 void saga_snddev_fmhs_pamp_on(int en)
 {
+	pr_aud_info("%s %d\n", __func__, en);
 	if (en) {
 		gpio_set_value(PM8058_GPIO_PM_TO_SYS(SAGA_AUD_HP_EN), 1);
 		if (!atomic_read(&aic3254_ctl))
@@ -377,9 +384,12 @@ static struct aic3254_ctl_ops cops = {
 	.panel_sleep_in = saga_panel_sleep_in
 };
 
+
 void __init saga_audio_init(void)
 {
-	struct pm_gpio audio_pwr_28 = {
+	int rc;
+#if 0
+	struct pm8058_gpio audio_pwr_28 = {
 		.direction      = PM_GPIO_DIR_OUT,
 		.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
 		.output_value   = 0,
@@ -389,7 +399,7 @@ void __init saga_audio_init(void)
 		.vin_sel        = 6,
 	};
 
-	struct pm_gpio audio_pwr_18 = {
+	struct pm8058_gpio audio_pwr_18 = {
 		.direction      = PM_GPIO_DIR_OUT,
 		.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
 		.output_value   = 0,
@@ -398,10 +408,10 @@ void __init saga_audio_init(void)
 		.function       = PM_GPIO_FUNC_NORMAL,
 		.vin_sel        = 4,
 	};
-
+#endif
 	mutex_init(&bt_sco_lock);
 
-#if defined(CONFIG_MSM7KV2_1X_AUDIO) || defined(CONFIG_MSM7KV2_AUDIO)
+#ifdef CONFIG_MSM7KV2_AUDIO
 	htc_7x30_register_analog_ops(&ops);
 	htc_7x30_register_icodec_ops(&iops);
 	htc_7x30_register_ecodec_ops(&eops);
@@ -411,17 +421,56 @@ void __init saga_audio_init(void)
 #endif
 	aic3254_register_ctl_ops(&cops);
 
+	rc = gpio_request(PM8058_GPIO_PM_TO_SYS(SAGA_AUD_HP_EN), "AUD_HP_EN");
+	if (rc) {
+		pr_aud_err("%s:Failed to request SAGA_AUD_HP_EN GPIO\n", __func__);
+	}else{
+		rc = gpio_direction_output(PM8058_GPIO_PM_TO_SYS(SAGA_AUD_HP_EN), 0);
+		if (rc < 0) {
+			pr_aud_err("%s: request SAGA_AUD_HP_EN gpio direction failed\n", __func__);
+		}
+	}
+
+	rc = gpio_request(PM8058_GPIO_PM_TO_SYS(SAGA_AUD_EP_EN), "AUD_RECE_EN");
+	if (rc) {
+		pr_aud_err("%s:Failed to request SAGA_AUD_EP_EN GPIO\n", __func__);
+	}else{
+		rc = gpio_direction_output(PM8058_GPIO_PM_TO_SYS(SAGA_AUD_EP_EN), 0);
+		if (rc < 0) {
+			pr_aud_err("%s: request SAGA_AUD_EP_EN gpio direction failed\n", __func__);
+		}
+	}
+
+	rc = gpio_request(PM8058_GPIO_PM_TO_SYS(SAGA_AUD_SPK_EN), "AUD_SPK_EN");
+	if (rc) {
+		pr_aud_err("%s:Failed to request SAGA_AUD_SPK_EN GPIO\n", __func__);
+	}else{
+		rc = gpio_direction_output(PM8058_GPIO_PM_TO_SYS(SAGA_AUD_SPK_EN), 0);
+		if (rc < 0) {
+			pr_aud_err("%s: request SAGA_AUD_SPK_EN gpio direction failed\n", __func__);
+		}
+	}
+
+	rc = gpio_request(PM8058_GPIO_PM_TO_SYS(SAGA_AUD_MICPATH_SEL_XB), "AUD_MICPATH_SEL");
+	if (rc) {
+		pr_aud_err("%s:Failed to request SAGA_AUD_MICPATH_SEL_XB GPIO\n", __func__);
+	}else{
+		rc = gpio_direction_output(PM8058_GPIO_PM_TO_SYS(SAGA_AUD_MICPATH_SEL_XB), 0);
+		if (rc < 0) {
+			pr_aud_err("%s: request SAGA_AUD_MICPATH_SEL_XB gpio direction failed\n", __func__);
+		}
+	}
 	/* Init PMIC GPIO */
-	pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(SAGA_AUD_HP_EN), &audio_pwr_28);
-	pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(SAGA_AUD_EP_EN), &audio_pwr_28);
-	pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(SAGA_AUD_SPK_EN), &audio_pwr_28);
-	pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(SAGA_AUD_MICPATH_SEL_XB), &audio_pwr_28);
+	//pm8058_gpio_config(SAGA_AUD_HP_EN, &audio_pwr_28);
+	//pm8058_gpio_config(SAGA_AUD_EP_EN, &audio_pwr_28);
+	//pm8058_gpio_config(SAGA_AUD_SPK_EN, &audio_pwr_28);
+	//pm8058_gpio_config(SAGA_AUD_MICPATH_SEL_XB, &audio_pwr_28);
 	/* Rest AIC3254 */
-	pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(SAGA_AUD_A3254_RSTz), &audio_pwr_18);
+	//pm8058_gpio_config(SAGA_AUD_A3254_RSTz, &audio_pwr_18);
 	mdelay(1);
-	audio_pwr_18.output_value = 1;
-	pm8xxx_gpio_config(PM8058_GPIO_PM_TO_SYS(SAGA_AUD_A3254_RSTz), &audio_pwr_18);
-	audio_pwr_18.output_value = 0;
+	//audio_pwr_18.output_value = 1;
+	//pm8058_gpio_config(SAGA_AUD_A3254_RSTz, &audio_pwr_18);
+	//audio_pwr_18.output_value = 0;
 
 	mutex_lock(&bt_sco_lock);
 	config_gpio_table(aux_pcm_gpio_off, ARRAY_SIZE(aux_pcm_gpio_off));
