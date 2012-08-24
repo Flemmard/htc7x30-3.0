@@ -469,9 +469,12 @@ obj-$(CONFIG_MACH_GLACIER) += board-glacier-keypad.o board-glacier-audio.o
 obj-$(CONFIG_MACH_GLACIER) += board-glacier-mmc.o board-glacier-wifi.o
 obj-$(CONFIG_MACH_GLACIER) += display/glacier-panel.o
 obj-$(CONFIG_MACH_GLACIER) += htc_bdaddress.o
-obj-$(CONFIG_ARCH_MSM7X30) += display/panel-samsungwvga-tl2796a.o display/panel-samsungwvga-s6e63m0.o 
-ifeq ($(CONFIG_MICROP_COMMON),y)
-	obj-$(CONFIG_ARCH_MSM7X30) += display/panel-sonywvga-s6d16a0x21-7x30.o
+# Those panels need SPI_DISPLAY
+ifeq ($(CONFIG_SPI_DISPLAY),y)
+	obj-$(CONFIG_ARCH_MSM7X30) += display/panel-samsungwvga-tl2796a.o display/panel-samsungwvga-s6e63m0.o 
+	ifeq ($(CONFIG_MICROP_COMMON),y)
+		obj-$(CONFIG_ARCH_MSM7X30) += display/panel-sonywvga-s6d16a0x21-7x30.o
+	endif
 endif
 obj-$(CONFIG_MACH_VISION) += board-vision.o
 obj-$(CONFIG_MACH_VISION) += board-vision-microp.o board-vision-rfkill.o
