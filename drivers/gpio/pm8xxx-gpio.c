@@ -357,7 +357,6 @@ static int __devexit pm_gpio_remove(struct platform_device *pdev)
 
 int pm8xxx_gpio_cfg(int gpio, int dir, int outb, int outv, int pull, int vsel, int out_strength, int function, int inv_int_pol)
 {
-  int ret;
   static struct pm_gpio tmp;
   tmp.direction          = dir;
   tmp.output_buffer      = outb;
