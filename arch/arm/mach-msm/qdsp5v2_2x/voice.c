@@ -210,7 +210,7 @@ static void voice_auddev_cb_function(u32 evt_id,
 				|| (atomic_read(&v->rel_start_flag) == 1));
 				pr_aud_info("wait done, voc_state = %d\n", v->voc_state);
 			} else {
-				pr_aud_err("Get AUDDEV_EVT_DEV_CHG_VOICE "
+				pr_aud_info("Get AUDDEV_EVT_DEV_CHG_VOICE "
 				       "at improper voc_state %d\n", v->voc_state);
 				voice_cmd_change();
 			}
@@ -219,7 +219,7 @@ static void voice_auddev_cb_function(u32 evt_id,
 				v->dev_rx.enabled = VOICE_DEV_DISABLED;
 				v->dev_tx.enabled = VOICE_DEV_DISABLED;
 		} else {
-			pr_aud_err("Get AUDDEV_EVT_DEV_CHG_VOICE "
+			pr_aud_info("Get AUDDEV_EVT_DEV_CHG_VOICE "
 			       "at improper dev_state %d\n", v->dev_state);
 			voice_cmd_change();
 		}
@@ -791,7 +791,7 @@ static int voice_thread(void *data)
 				v->voc_state = VOICE_ACQUIRE;
 				pr_aud_info("voc_state -> VOICE_ACQUIRE\n");
 			} else {
-				pr_aud_err("Get DEV_CHANGE_READY "
+				pr_aud_info("Get DEV_CHANGE_READY "
 					"at the wrong voc_state %d\n", v->voc_state);
 				voice_cmd_device_info(v);
 			}
