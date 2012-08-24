@@ -1259,20 +1259,13 @@ static struct i2c_board_info msm_camera_boardinfo[] __initdata = {
 	},
 #endif
 };
-int aat1271_flashlight_control(int mode);
-#ifdef CONFIG_MSM_CAMERA
 
+#ifdef CONFIG_ARCH_MSM_FLASHLIGHT
 static int flashlight_control(int mode)
 {
-#ifdef CONFIG_FLASHLIGHT_AAT1271
 	return aat1271_flashlight_control(mode);
-#else
-	return 0;
-#endif
 }
 
-#endif
-#ifdef CONFIG_FLASHLIGHT_AAT1271
 static void config_vivo_flashlight_gpios(void)
 {
 	uint32_t flashlight_gpio_table[] = {
@@ -1291,8 +1284,8 @@ static struct flashlight_platform_data vivo_flashlight_data = {
 };
 
 static struct platform_device vivo_flashlight_device = {
-        .name = "FLASHLIGHT_AAT1271",
-        .dev = {
+	.name = FLASHLIGHT_NAME,
+	.dev		= {
                 .platform_data  = &vivo_flashlight_data,
         },
 };
@@ -4077,7 +4070,9 @@ static struct platform_device *devices[] __initdata = {
 #ifdef CONFIG_S5K6AAFX
 	&msm_camera_sensor_s5k6aafx,
 #endif
-
+#ifdef CONFIG_ARCH_MSM_FLASHLIGHT
+        &vivo_flashlight_device,
+#endif
 	&msm_device_adspdec,
 	&qup_device_i2c,
 	&msm_kgsl_3d0,
