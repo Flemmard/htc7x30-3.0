@@ -37,8 +37,10 @@
 
 #define VIVO_SDMC_CD_N_TO_SYS PM8058_GPIO_PM_TO_SYS(VIVO_GPIO_SDMC_CD_N)
 
-/* ---- SDCARD ---- */
+extern int msm_add_sdcc(unsigned int controller, struct mmc_platform_data *plat);
 
+/* ---- SDCARD ---- */
+#if 0
 static uint32_t sdcard_on_gpio_table[] = {
 	PCOM_GPIO_CFG(58, 1, GPIO_OUTPUT, GPIO_PULL_DOWN, GPIO_16MA), /* CLK */
 	PCOM_GPIO_CFG(59, 1, GPIO_INPUT, GPIO_NO_PULL, GPIO_10MA), /* CMD */
@@ -146,9 +148,11 @@ static unsigned int vivo_sdslot_status(struct device *dev)
 
 	return (!status);
 }
+#endif
 
 #define VIVO_MMC_VDD		(MMC_VDD_28_29 | MMC_VDD_29_30)
 
+#if 0
 static unsigned int vivo_sdslot_type = MMC_TYPE_SD;
 
 static struct mmc_platform_data vivo_sdslot_data = {
@@ -166,7 +170,7 @@ static struct mmc_platform_data vivo_movinand_data = {
 	.slot_type	= &vivo_emmcslot_type,
 	.mmc_bus_width  = MMC_CAP_8_BIT_DATA,
 };
-
+#endif
 /* ---- WIFI ---- */
 
 static uint32_t wifi_on_gpio_table[] = {
@@ -188,6 +192,19 @@ static uint32_t wifi_off_gpio_table[] = {
 	PCOM_GPIO_CFG(110, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_4MA), /* CLK */
 	PCOM_GPIO_CFG(147, 0, GPIO_OUTPUT, GPIO_NO_PULL, GPIO_4MA), /* WLAN IRQ */
 };
+
+static void config_gpio_table(uint32_t *table, int len)
+{
+		int n, rc;
+		for (n = 0; n < len; n++) {
+				rc = gpio_tlmm_config(table[n], GPIO_CFG_ENABLE);
+				if (rc) {
+						pr_err("%s: gpio_tlmm_config(%#x)=%d\n",
+								__func__, table[n], rc);
+						break;
+				}
+		}
+}
 
 /* BCM4329 returns wrong sdio_vsn(1) when we read cccr,
  * we use predefined value (sdio_vsn=2) here to initial sdio driver well
@@ -224,11 +241,18 @@ static unsigned int vivo_wifi_status(struct device *dev)
 	return vivo_wifi_cd;
 }
 
+static unsigned int vivo_wifislot_type = MMC_TYPE_SDIO_WIFI;
 static struct mmc_platform_data vivo_wifi_data = {
 	.ocr_mask		= MMC_VDD_28_29,
 	.status			= vivo_wifi_status,
 	.register_status_notify	= vivo_wifi_status_register,
 	.embedded_sdio		= &vivo_wifi_emb_data,
+	.slot_type          = &vivo_wifislot_type,
+		.mmc_bus_width  = MMC_CAP_4_BIT_DATA,
+		.msmsdcc_fmin   = 144000,
+		.msmsdcc_fmid   = 24576000,
+		.msmsdcc_fmax   = 49152000,
+		.nonremovable   = 0,
 };
 
 int vivo_wifi_set_carddetect(int val)
@@ -243,12 +267,13 @@ int vivo_wifi_set_carddetect(int val)
 }
 EXPORT_SYMBOL(vivo_wifi_set_carddetect);
 
-static struct pm_gpio pmic_gpio_sleep_clk_output = {
+#if 0
+static struct pm8058_gpio pmic_gpio_sleep_clk_output = {
 	.direction      = PM_GPIO_DIR_OUT,
 	.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
 	.output_value   = 0,
 	.pull           = PM_GPIO_PULL_NO,
-	.vin_sel        = PM8058_GPIO_VIN_S3,      /* S3 1.8 V */
+	.vin_sel        = PM_GPIO_VIN_S3,      /* S3 1.8 V */
 	.out_strength   = PM_GPIO_STRENGTH_HIGH,
 	.function       = PM_GPIO_FUNC_2,
 };
@@ -274,7 +299,7 @@ int vivo_wifi_bt_sleep_clk_ctl(int on, int id)
 			&& (CLK_OFF == vivo_sleep_clk_state_bt)) {
 			printk(KERN_DEBUG "EN SLEEP CLK\n");
 			pmic_gpio_sleep_clk_output.function = PM_GPIO_FUNC_2;
-			err = pm8xxx_gpio_config(
+			err = pm8058_gpio_config(
 					VIVO_GPIO_WIFI_BT_SLEEP_CLK_EN,
 					&pmic_gpio_sleep_clk_output);
 			if (err) {
@@ -297,7 +322,7 @@ int vivo_wifi_bt_sleep_clk_ctl(int on, int id)
 			printk(KERN_DEBUG "DIS SLEEP CLK\n");
 			pmic_gpio_sleep_clk_output.function
 					= PM_GPIO_FUNC_NORMAL;
-			err = pm8xxx_gpio_config(
+			err = pm8058_gpio_config(
 					VIVO_GPIO_WIFI_BT_SLEEP_CLK_EN,
 					&pmic_gpio_sleep_clk_output);
 			if (err) {
@@ -321,6 +346,7 @@ int vivo_wifi_bt_sleep_clk_ctl(int on, int id)
 	return 0;
 }
 EXPORT_SYMBOL(vivo_wifi_bt_sleep_clk_ctl);
+#endif
 
 int vivo_wifi_power(int on)
 {
@@ -334,7 +360,7 @@ int vivo_wifi_power(int on)
 				ARRAY_SIZE(wifi_off_gpio_table));
 	}
 
-	vivo_wifi_bt_sleep_clk_ctl(on, ID_WIFI);
+	/*vivo_wifi_bt_sleep_clk_ctl(on, ID_WIFI);*/
 	gpio_set_value(VIVO_GPIO_WIFI_SHUTDOWN_N, on); /* WIFI_SHUTDOWN */
 	mdelay(120);
 	return 0;
@@ -351,17 +377,15 @@ int __init vivo_init_mmc(unsigned int sys_rev)
 {
 	uint32_t id;
 	wifi_status_cb = NULL;
-	sdslot_vreg_enabled = 0;
+	/*sdslot_vreg_enabled = 0;*/
 
 	printk(KERN_INFO "vivo: %s\n", __func__);
 	/* SDC2: MoviNAND */
-        /*
+#if 0
 	register_msm_irq_mask(INT_SDC2_0);
 	register_msm_irq_mask(INT_SDC2_1);
-        */
 	config_gpio_table(movinand_on_gpio_table,
 			  ARRAY_SIZE(movinand_on_gpio_table));
-#if 0
 	msm_add_sdcc(2, &vivo_movinand_data, 0, 0);
 #endif
 
@@ -371,6 +395,7 @@ int __init vivo_init_mmc(unsigned int sys_rev)
 	gpio_set_value(VIVO_GPIO_WIFI_SHUTDOWN_N, 0);
 
 	msm_add_sdcc(3, &vivo_wifi_data);
+
 #if 0
 	register_msm_irq_mask(INT_SDC4_0);
 	register_msm_irq_mask(INT_SDC4_1);

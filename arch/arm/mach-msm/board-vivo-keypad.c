@@ -30,19 +30,6 @@ static char *keycaps = "--qwerty";
 #define MODULE_PARAM_PREFIX "board_vivo."
 module_param_named(keycaps, keycaps, charp, 0);
 
-static void config_gpio_table(uint32_t *table, int len)
-{
-	int n, rc;
-	for (n = 0; n < len; n++) {
-		rc = gpio_tlmm_config(table[n], GPIO_CFG_ENABLE);
-		if (rc) {
-			pr_err("[KEY] %s: gpio_tlmm_config(%#x)=%d\n",
-				__func__, table[n], rc);
-			break;
-		}
-	}
-}
-
 static struct gpio_event_direct_entry vivo_keypad_input_map[] = {
 	{
 		.gpio = VIVO_GPIO_KEYPAD_POWER_KEY,
@@ -58,20 +45,25 @@ static struct gpio_event_direct_entry vivo_keypad_input_map[] = {
 	},
 };
 
+uint32_t inputs_gpio_table[] = {
+	PCOM_GPIO_CFG(VIVO_GPIO_KEYPAD_POWER_KEY, 0, GPIO_INPUT,
+		      GPIO_PULL_UP, GPIO_4MA),
+};
+
 static void vivo_setup_input_gpio(void)
 {
-	uint32_t inputs_gpio_table[] = {
-		PCOM_GPIO_CFG(VIVO_GPIO_KEYPAD_POWER_KEY, 0, GPIO_INPUT, GPIO_PULL_UP, GPIO_4MA),
-	};
-
-	config_gpio_table(inputs_gpio_table, ARRAY_SIZE(inputs_gpio_table));
+	gpio_tlmm_config(inputs_gpio_table[0], GPIO_CFG_ENABLE);
 }
 
 static struct gpio_event_input_info vivo_keypad_input_info = {
 	.info.func = gpio_event_input_func,
 	.flags = GPIOEDF_PRINT_KEYS,
 	.type = EV_KEY,
-	.debounce_time.tv64 = 5 * NSEC_PER_MSEC,
+#if BITS_PER_LONG != 64 && !defined(CONFIG_KTIME_SCALAR)
+	.debounce_time.tv.nsec = 8 * NSEC_PER_MSEC,
+# else
+	.debounce_time.tv64 = 8 * NSEC_PER_MSEC,
+# endif
 	.keymap = vivo_keypad_input_map,
 	.keymap_size = ARRAY_SIZE(vivo_keypad_input_map),
 	.setup_input_gpio = vivo_setup_input_gpio,
