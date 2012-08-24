@@ -24,6 +24,10 @@ struct cy8c_i2c_platform_data {
 	uint16_t version;
 	uint16_t gpio_irq;
 	uint8_t orient;
+	uint8_t timeout;
+	uint8_t interval;
+	uint8_t unlock_attr;
+	uint8_t auto_reset;
 	int abs_x_min;
 	int abs_x_max;
 	int abs_y_min;
@@ -33,6 +37,9 @@ struct cy8c_i2c_platform_data {
 	int abs_width_min;
 	int abs_width_max;
 	int (*power)(int on);
+	int (*wake)(void);
+	int (*reset)(void);
+	uint16_t filter_level[4];
 };
 
 #endif
