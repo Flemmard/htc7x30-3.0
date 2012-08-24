@@ -21,9 +21,17 @@
 #include <linux/i2c.h>
 #include <linux/uaccess.h>
 #include <linux/miscdevice.h>
+
+#ifdef CONFIG_MSM_CAMERA_8X60
+#include <mach/camera-8x60.h>
+#elif defined(CONFIG_MSM_CAMERA_7X30)
+#include <mach/camera-7x30.h>
+#else
+#include <mach/camera.h>
+#endif
+
 #include <media/msm_camera_sensor.h>
 #include <mach/gpio.h>
-#include <mach/camera-7x30.h>
 #include <mach/vreg.h>
 #include "s5k6aafx.h"
 #include <linux/slab.h>
@@ -45,7 +53,7 @@ static struct platform_device *s5k6aafx_pdev;
 static int op_mode;
 static int qtr_size_mode;
 static DECLARE_WAIT_QUEUE_HEAD(s5k6aafx_wait_queue);
-DEFINE_MUTEX(s5k6aafx_sem);
+DEFINE_SEMAPHORE(s5k6aafx_sem);
 
 static int sensor_probe_node = 0;
 static enum frontcam_t previous_mirror_mode;
@@ -169,11 +177,11 @@ static int s5k6aafx_i2c_read(unsigned short saddr,
 	buf[1] = (raddr & 0x00FF);
 
 	rc = s5k6aafx_i2c_rxdata(saddr, buf, 2);
-	if (rc < 0){
-		printk(KERN_ERR "s5k6aafx_i2c_read failed!\n");
+	if (rc < 0) {
+		pr_err("[CAM] s5k6aafx_i2c_read failed!\n");
 		return rc;
 	}
-	
+
 	*rdata = buf[0] << 8 | buf[1];
 
 	return rc;
@@ -191,8 +199,12 @@ static int s5k6aafx_gpio_pull(int gpio_pin, int pull_mode)
 	return rc;
 }
 
+
 static int s5k6aafx_set_qtr_size_mode(enum qtr_size_mode qtr_size_mode_value)
 {
+	int rc = 0;
+	struct msm_camera_sensor_info *sinfo = s5k6aafx_pdev->dev.platform_data;
+
 	if (op_mode == SENSOR_SNAPSHOT_MODE)
 		return 0;
 
@@ -201,152 +213,300 @@ static int s5k6aafx_set_qtr_size_mode(enum qtr_size_mode qtr_size_mode_value)
 	s5k6aafx_i2c_write(s5k6aafx_client->addr,
 		S5K6AAFX_REG_W_ADDH, S5K6AAFX_ADDH_SW_REG_INT);
 
-    qtr_size_mode = qtr_size_mode_value;
+	qtr_size_mode = qtr_size_mode_value;
 
-	switch (qtr_size_mode_value) {
-	case NORMAL_QTR_SIZE_MODE:
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_W_ADDL, 0x021C);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_WR, 0x0003);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_W_ADDL, 0x0224);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_WR, 0x0000);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_W_ADDL, 0x021E);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_WR, 0x0001);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_W_ADDL, 0x0226);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_WR, 0x0001);
+	/* separate mipi/parallel */
+	if (sinfo->csi_if) {
+		switch (qtr_size_mode_value) {
+		case NORMAL_QTR_SIZE_MODE:
+			pr_info("[CAM] NORMAL_QTR_SIZE_MODE\n");
+			rc = s5k6aafx_i2c_write_table(&s5k6aafx_regs.prev_mode_switch_VGA[0],
+			s5k6aafx_regs.prev_mode_switch_VGA_size);
+			mdelay(150);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_W_ADDL, 0x0224);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_WR, 0x0000);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_W_ADDL, 0x0226);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_WR, 0x0001);
+			/*********** APPLY PREVIEW CONFIGURATION & RUN PREVIEW ***********/
+			/* REG_TC_GP_ActivePrevConfig-Select preview configuration_3 */
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_W_ADDL, 0x021C);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_WR, 0x0003);
+			/* REG_TC_GP_PrevOpenAfterChange */
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_W_ADDL, 0x0220);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_WR, 0x0001);
+			/* REG_TC_GP_NewConfigSync-Update preview configuration */
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_W_ADDL, 0x01F8);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_WR, 0x0001);
+			/* REG_TC_GP_PrevConfigChanged */
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_W_ADDL, 0x021E);
+			/* Enable output after config change */
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_WR, 0x0001);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_W_ADDL, 0x01F0);
+			/* REG_TC_GP_EnablePreview - Start preview */
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_WR, 0x0001);
+			/* REG_TC_GP_EnablePreviewChanged */
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_WR, 0x0001);
+			break;
 
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_W_ADDL, 0x020A);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_WR, S5K6AAFX_ADJ_FULL_SIZE_WIDTH);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_WR, S5K6AAFX_ADJ_FULL_SIZE_HEIGHT);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_W_ADDL, 0x0212);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_WR, S5K6AAFX_FULL_SIZE_WIDTH);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_WR, S5K6AAFX_FULL_SIZE_HEIGHT);
+		case LARGER_QTR_SIZE_MODE:/*HD*/
+			pr_info("[CAM] LARGER_QTR_SIZE_MODE\n");
+			rc = s5k6aafx_i2c_write_table(&s5k6aafx_regs.prev_HD[0],
+			s5k6aafx_regs.prev_HD_size);
+			mdelay(100);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_W_ADDL, 0x0254);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_WR, 0x029A);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_W_ADDL, 0x021E);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_WR, 0x0001);
+			mdelay(200);
 
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_W_ADDL, 0x01FA);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_WR, S5K6AAFX_ADJ_FULL_SIZE_WIDTH);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_WR, S5K6AAFX_ADJ_FULL_SIZE_HEIGHT);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_WR,  (S5K6AAFX_FULL_SIZE_WIDTH-S5K6AAFX_ADJ_FULL_SIZE_WIDTH)/2);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_WR,  (S5K6AAFX_FULL_SIZE_HEIGHT-S5K6AAFX_ADJ_FULL_SIZE_HEIGHT)/2);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_WR, S5K6AAFX_FULL_SIZE_WIDTH);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_WR, S5K6AAFX_FULL_SIZE_HEIGHT);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_WR,  0x0000);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_WR,  0x0000);
+			break;
+		default:
+			break;
+		}
+	} else {
+		switch (qtr_size_mode_value) {
+		case NORMAL_QTR_SIZE_MODE:
+			pr_info("[CAM] NORMAL_QTR_SIZE_MODE\n");
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_W_ADDL, 0x021C);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_WR, 0x0003);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_W_ADDL, 0x0224);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_WR, 0x0000);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_W_ADDL, 0x021E);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_WR, 0x0001);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_W_ADDL, 0x0226);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_WR, 0x0001);
 
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_W_ADDL, 0x021A);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_WR, 0x0001);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_W_ADDL, 0x020A);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_WR, S5K6AAFX_ADJ_FULL_SIZE_WIDTH);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_WR, S5K6AAFX_ADJ_FULL_SIZE_HEIGHT);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_W_ADDL, 0x0212);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_WR, S5K6AAFX_FULL_SIZE_WIDTH);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_WR, S5K6AAFX_FULL_SIZE_HEIGHT);
 
-		mdelay(100);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_W_ADDL, 0x01FA);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_WR, S5K6AAFX_ADJ_FULL_SIZE_WIDTH);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_WR, S5K6AAFX_ADJ_FULL_SIZE_HEIGHT);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_WR,  (S5K6AAFX_FULL_SIZE_WIDTH-S5K6AAFX_ADJ_FULL_SIZE_WIDTH)/2);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_WR,  (S5K6AAFX_FULL_SIZE_HEIGHT-S5K6AAFX_ADJ_FULL_SIZE_HEIGHT)/2);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_WR, S5K6AAFX_FULL_SIZE_WIDTH);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_WR, S5K6AAFX_FULL_SIZE_HEIGHT);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_WR,  0x0000);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_WR,  0x0000);
 
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_W_ADDL, 0x021E);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_WR, 0x0001);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_W_ADDL, 0x0226);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_WR, 0x0001);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_W_ADDL, 0x021A);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_WR, 0x0001);
 
-		mdelay(600);
+			mdelay(100);
 
-		break;
-	case LARGER_QTR_SIZE_MODE:
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_W_ADDL, 0x021E);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_WR, 0x0001);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_W_ADDL, 0x0226);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_WR, 0x0001);
 
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_W_ADDL, 0x021C);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_WR, 0x0000);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_W_ADDL, 0x0224);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_WR, 0x0001);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_W_ADDL, 0x021E);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_WR, 0x0001);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_W_ADDL, 0x0226);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_WR, 0x0001);
+			mdelay(600);
 
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_W_ADDL, 0x020A);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_WR, S5K6AAFX_720P_SIZE_WIDTH);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_WR, S5K6AAFX_720P_SIZE_HEIGHT);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_W_ADDL, 0x0212);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_WR, S5K6AAFX_720P_SIZE_WIDTH);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_WR, S5K6AAFX_720P_SIZE_HEIGHT);
+			break;
+		case LARGER_QTR_SIZE_MODE:
+			pr_info("[CAM] LARGER_QTR_SIZE_MODE\n");
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_W_ADDL, 0x021C);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_WR, 0x0000);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_W_ADDL, 0x0224);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_WR, 0x0001);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_W_ADDL, 0x021E);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_WR, 0x0001);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_W_ADDL, 0x0226);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_WR, 0x0001);
 
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_W_ADDL, 0x01FA);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_WR, S5K6AAFX_720P_SIZE_WIDTH);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_WR, S5K6AAFX_720P_SIZE_HEIGHT);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_WR, (S5K6AAFX_FULL_SIZE_WIDTH-S5K6AAFX_720P_SIZE_WIDTH)/2);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_WR, (S5K6AAFX_FULL_SIZE_HEIGHT-S5K6AAFX_720P_SIZE_HEIGHT)/2);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_WR, S5K6AAFX_720P_SIZE_WIDTH);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_WR, S5K6AAFX_720P_SIZE_HEIGHT);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-S5K6AAFX_REG_WR, (S5K6AAFX_FULL_SIZE_WIDTH-S5K6AAFX_720P_SIZE_WIDTH)/2);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-S5K6AAFX_REG_WR, (S5K6AAFX_FULL_SIZE_HEIGHT-S5K6AAFX_720P_SIZE_HEIGHT)/2);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_W_ADDL, 0x021A);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_WR, 0x0001);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_W_ADDL, 0x020A);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_WR, S5K6AAFX_720P_SIZE_WIDTH);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_WR, S5K6AAFX_720P_SIZE_HEIGHT);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_W_ADDL, 0x0212);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_WR, S5K6AAFX_720P_SIZE_WIDTH);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_WR, S5K6AAFX_720P_SIZE_HEIGHT);
 
-		mdelay(100);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_W_ADDL, 0x01FA);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_WR, S5K6AAFX_720P_SIZE_WIDTH);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_WR, S5K6AAFX_720P_SIZE_HEIGHT);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_WR, (S5K6AAFX_FULL_SIZE_WIDTH-S5K6AAFX_720P_SIZE_WIDTH)/2);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_WR, (S5K6AAFX_FULL_SIZE_HEIGHT-S5K6AAFX_720P_SIZE_HEIGHT)/2);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_WR, S5K6AAFX_720P_SIZE_WIDTH);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_WR, S5K6AAFX_720P_SIZE_HEIGHT);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_WR, (S5K6AAFX_FULL_SIZE_WIDTH-S5K6AAFX_720P_SIZE_WIDTH)/2);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_WR, (S5K6AAFX_FULL_SIZE_HEIGHT-S5K6AAFX_720P_SIZE_HEIGHT)/2);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_W_ADDL, 0x021A);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_WR, 0x0001);
 
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_W_ADDL, 0x021E);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_WR, 0x0001);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_W_ADDL, 0x0226);
-		s5k6aafx_i2c_write(s5k6aafx_client->addr,
-			S5K6AAFX_REG_WR, 0x0001);
+			mdelay(100);
 
-		mdelay(200);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_W_ADDL, 0x021E);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_WR, 0x0001);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_W_ADDL, 0x0226);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr,
+				S5K6AAFX_REG_WR, 0x0001);
 
-		break;
-	default:
-		break;
+			mdelay(200);
+
+			break;
+		default:
+			break;
+		}
 	}
 	return 0;
 }
+
+
+static int s5k6aafx_set_front_camera_mode(enum frontcam_t frontcam_value)
+{
+	if (op_mode == SENSOR_SNAPSHOT_MODE || previous_mirror_mode == frontcam_value)
+		return 0;
+
+	s5k6aafx_i2c_write(s5k6aafx_client->addr,
+		S5K6AAFX_REG_I2C_MODE, S5K6AAFX_ADDH_SW_REG_INT);
+
+	switch (frontcam_value) {
+	case CAMERA_MIRROR:
+		/*mirror and flip*/
+		if (!s5k6aafx_ctrl->sensordata->full_size_preview &&
+			!s5k6aafx_ctrl->sensordata->power_down_disable &&
+			!s5k6aafx_ctrl->sensordata->mirror_mode) {
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x02D4, 0x0002);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x02D6, 0x0002);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x0262, 0x0002);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x0264, 0x0002);
+		} else { /* for flyer */
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x02D4, 0x0001);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x02D6, 0x0001);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x0262, 0x0001);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x0264, 0x0001);
+		}
+		break;
+	case CAMERA_REVERSE:
+		/*reverse mode*/
+		if (!s5k6aafx_ctrl->sensordata->full_size_preview &&
+			!s5k6aafx_ctrl->sensordata->power_down_disable &&
+			!s5k6aafx_ctrl->sensordata->mirror_mode) {
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x02D4, 0x0003);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x02D6, 0x0003);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x0262, 0x0003);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x0264, 0x0003);
+		} else { /* for flyer */
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x02D4, 0x0000);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x02D6, 0x0000);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x0262, 0x0000);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x0264, 0x0000);
+		}
+		break;
+
+	case CAMERA_PORTRAIT_REVERSE:
+		/*portrait reverse mode*/
+		if (!s5k6aafx_ctrl->sensordata->full_size_preview &&
+			!s5k6aafx_ctrl->sensordata->power_down_disable &&
+			!s5k6aafx_ctrl->sensordata->mirror_mode) {
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x02D4, 0x0000);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x02D6, 0x0000);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x0262, 0x0000);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x0264, 0x0000);
+		} else { /* for flyer */
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x02D4, 0x0003);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x02D6, 0x0003);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x0262, 0x0003);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x0264, 0x0003);
+		}
+		break;
+
+	default:
+		break;
+	}
+
+	s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_TC_GP_PrevConfigChanged, 0x0001);
+
+	previous_mirror_mode = frontcam_value;
+
+	msleep(150);
+
+	return 0;
+}
+
+static void s5k6aafx_mipi_setting(void){
+		/*raise up driving strength*/
+		s5k6aafx_i2c_write(s5k6aafx_client->addr, 0xFCFC, 0xD000);/*FCFC page*/
+		s5k6aafx_i2c_write(s5k6aafx_client->addr, 0xB0A2, 0x001E);
+		/*Dphy CTS 1.0 timing match to Qualocmm 8660*/
+		s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_W_ADDH, 0xD000);
+		s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_W_ADDL, 0xB0C0);
+		s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_WR, 0x2EE0);
+		s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_WR, 0x0960);/*B0C2*/
+		s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_W_ADDL, 0xB0C8);
+		s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_WR, 0x0005);
+		s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_WR, 0x0003);/*B0CA*/
+		s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_WR, 0x000A);/*B0CC*/
+		s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_W_ADDL, 0xB0EA);
+		s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_WR, 0x0004);
+		s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_WR, 0x0001);/*B0EC*/
+		s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_W_ADDL, 0xB0E6);
+		s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_WR, 0x0004);
+		s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_WR, 0x0001);/*B0E8*/
+		s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_W_ADDL, 0xB0F0);
+		s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_WR, 0x0004);
+}
+
 
 static int s5k6aafx_set_sensor_mode(int mode, enum qtr_size_mode qtr_size_mode_value)
 {
@@ -356,12 +516,14 @@ static int s5k6aafx_set_sensor_mode(int mode, enum qtr_size_mode qtr_size_mode_v
 	if (config_csi == 0) {
 		if (sinfo->csi_if) {
 			/* config mipi csi controller */
-			pr_info("set csi config\n");
+			pr_info("[CAM] set csi config\n");
 			s5k6aafx_csi_params.data_format = CSI_8BIT;
 			s5k6aafx_csi_params.lane_cnt = 1;
 			s5k6aafx_csi_params.lane_assign = 0xe4;
 			s5k6aafx_csi_params.dpcm_scheme = 0;
-			s5k6aafx_csi_params.settle_cnt = 0x14;
+			s5k6aafx_csi_params.settle_cnt = 0x20;
+			s5k6aafx_csi_params.mipi_driving_strength = 0;
+			s5k6aafx_csi_params.hs_impedence = 0x0F;
 			msm_camio_csi_config(&s5k6aafx_csi_params);
 			mdelay(20);
 			config_csi = 1;
@@ -418,20 +580,27 @@ static int s5k6aafx_set_sensor_mode(int mode, enum qtr_size_mode qtr_size_mode_v
 
 static int s5k6aafx_set_FPS(struct fps_cfg *fps)
 {
-	/* input is new fps in Q8 format */
+	pr_info("[CAM]s5k6aafx_set_FPS,fps->fps_div=%d", fps->fps_div);
+
 	if (op_mode == SENSOR_SNAPSHOT_MODE)
 		return 0;
 
-	if (fps->f_mult < 1 * 0x100 || fps->f_mult > 30 * 0x100)
-		return -EINVAL;
+	s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_I2C_MODE, S5K6AAFX_ADDH_SW_REG_INT);
+	/* s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_3TC_PCFG_usFrTimeType, 1); */
 
-	s5k6aafx_i2c_write(s5k6aafx_client->addr,
-		S5K6AAFX_REG_I2C_MODE, S5K6AAFX_ADDH_SW_REG_INT);
-
-	s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_3TC_PCFG_usFrTimeType, 1);
-	s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_3TC_PCFG_usMaxFrTimeMsecMult10, 1000 * 0x100 * 10 / fps->f_mult);
-	s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_3TC_PCFG_usMinFrTimeMsecMult10, 1000 * 0x100 * 10 / fps->f_mult);
-
+	if (fps->fps_div == 0) {
+		s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_3TC_PCFG_usMaxFrTimeMsecMult10, 0x0535);
+		s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_3TC_PCFG_usMinFrTimeMsecMult10, 0x0168);
+	}	else if (fps->fps_div == 15) {
+		s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_3TC_PCFG_usMaxFrTimeMsecMult10, 0x029A);
+		s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_3TC_PCFG_usMinFrTimeMsecMult10, 0x029A);
+	}	else if (fps->fps_div == 10) {
+		s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_3TC_PCFG_usMaxFrTimeMsecMult10, 0x03E8);
+		s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_3TC_PCFG_usMinFrTimeMsecMult10, 0x03E8);
+	}	else if (fps->fps_div == 1015) {
+		s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_3TC_PCFG_usMaxFrTimeMsecMult10, 0x03E8);
+		s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_3TC_PCFG_usMinFrTimeMsecMult10, 0x029A);
+	}
 	s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_TC_GP_PrevConfigChanged, 0x0001);
 
 	return 0;
@@ -682,73 +851,6 @@ static int s5k6aafx_set_contrast(enum contrast_mode contrast_value)
 	return 0;
 }
 
-static int s5k6aafx_set_front_camera_mode(enum frontcam_t frontcam_value)
-{
-	if (op_mode == SENSOR_SNAPSHOT_MODE || previous_mirror_mode == frontcam_value)
-		return 0;
-
-	s5k6aafx_i2c_write(s5k6aafx_client->addr,
-		S5K6AAFX_REG_I2C_MODE, S5K6AAFX_ADDH_SW_REG_INT);
-
-	switch (frontcam_value) {
-	case CAMERA_MIRROR:
-		/*mirror and flip*/
-		if (!s5k6aafx_ctrl->sensordata->full_size_preview &&
-			!s5k6aafx_ctrl->sensordata->power_down_disable) {
-			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x02D4, 0x0002);
-			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x02D6, 0x0002);
-			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x0262, 0x0002);
-			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x0264, 0x0002);
-		} else { /* for flyer */
-			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x02D4, 0x0001);
-			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x02D6, 0x0001);
-			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x0262, 0x0001);
-			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x0264, 0x0001);
-		}
-		break;
-	case CAMERA_REVERSE:
-		/*reverse mode*/
-		if (!s5k6aafx_ctrl->sensordata->full_size_preview &&
-			!s5k6aafx_ctrl->sensordata->power_down_disable) {
-			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x02D4, 0x0003);
-			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x02D6, 0x0003);
-			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x0262, 0x0003);
-			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x0264, 0x0003);
-		} else { /* for flyer */
-			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x02D4, 0x0000);
-			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x02D6, 0x0000);
-			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x0262, 0x0000);
-			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x0264, 0x0000);
-		}
-		break;
-
-	case CAMERA_PORTRAIT_REVERSE:
-		/*portrait reverse mode*/
-		if (!s5k6aafx_ctrl->sensordata->full_size_preview &&
-			!s5k6aafx_ctrl->sensordata->power_down_disable) {
-			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x02D4, 0x0000);
-			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x02D6, 0x0000);
-			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x0262, 0x0000);
-			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x0264, 0x0000);
-		} else { /* for flyer */
-			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x02D4, 0x0003);
-			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x02D6, 0x0003);
-			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x0262, 0x0003);
-			s5k6aafx_i2c_write(s5k6aafx_client->addr, 0x0264, 0x0003);
-		}
-		break;
-
-	default:
-		break;
-	}
-
-	s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_TC_GP_PrevConfigChanged, 0x0001);
-
-	previous_mirror_mode = frontcam_value;
-
-	return 0;
-}
-
 #if 0
 static int s5k6aafx_set_metering_mode(enum aec_metering_mode metering_value)
 {
@@ -790,7 +892,7 @@ static int s5k6aafx_set_metering_mode(enum aec_metering_mode metering_value)
 	s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_W_ADDL, 0x100E);
 
 	for (i = 0; i < 32; i++) {
-		CDBG("write table[%d]=%x\n", i, weight_table[i]);
+		CDBG("[CAM] write table[%d]=%x\n", i, weight_table[i]);
 		s5k6aafx_i2c_write(s5k6aafx_client->addr,
 			S5K6AAFX_REG_WR, weight_table[i]);
 	}
@@ -803,7 +905,7 @@ static int s5k6aafx_sensor_read_id(const struct msm_camera_sensor_info *data)
 {
 	uint16_t model_id;
 	int rc = 0;
-	
+
 	pr_info("[CAM]s5k6aafx_sensor_read_id\n");
 	/* Read the Model ID of the sensor */
 	rc = s5k6aafx_i2c_write(s5k6aafx_client->addr,
@@ -854,7 +956,7 @@ static int s5k6aafx_vreg_disable(struct platform_device *pdev)
 {
 	struct msm_camera_sensor_info *sdata = pdev->dev.platform_data;
 	int rc;
-	printk(KERN_INFO "%s camera vreg off\n", __func__);
+	pr_info("[CAM] %s camera vreg off\n", __func__);
 	if (sdata->camera_power_off == NULL) {
 		pr_err("[CAM]sensor platform_data didnt register\n");
 		return -EIO;
@@ -866,6 +968,8 @@ static int s5k6aafx_vreg_disable(struct platform_device *pdev)
 int s5k6aafx_sensor_open_init(struct msm_camera_sensor_info *data)
 {
 	int rc = 0;
+	config_csi = 0;
+
 	s5k6aafx_ctrl = kzalloc(sizeof(struct s5k6aafx_ctrl), GFP_KERNEL);
 	if (!s5k6aafx_ctrl) {
 		pr_info("[CAM]s5k6aafx_init failed!\n");
@@ -873,14 +977,25 @@ int s5k6aafx_sensor_open_init(struct msm_camera_sensor_info *data)
 		goto init_done;
 	}
 
+	pr_info("[CAM] s5k6aafx_regs.reset_init after 0x%X\n",
+		(unsigned int)s5k6aafx_regs.reset_init);
+
 	if (data == NULL) {
 		pr_err("[CAM]%s sensor data is NULL\n", __func__);
 		return -EINVAL;
 	}
 	s5k6aafx_ctrl->sensordata = data;
-	data->pdata->camera_gpio_on();
+
+
 	if (!data->power_down_disable)
 		s5k6aafx_vreg_enable(s5k6aafx_pdev);
+
+
+	/*switch PCLK and MCLK to 2nd cam*/
+	pr_info("[CAM]s5k6aafx: s5k6aafx_sensor_probe switch clk\n");
+	if (data->camera_clk_switch != NULL)
+		data->camera_clk_switch();
+
 
 	if (data->camera_pm8058_power != NULL) {
 		if (data->camera_pm8058_power(1) < 0)
@@ -889,21 +1004,21 @@ int s5k6aafx_sensor_open_init(struct msm_camera_sensor_info *data)
 		if (s5k6aafx_gpio_pull(data->sensor_pwd, 1) < 0)
 			goto init_fail;
 	}
+	mdelay(1);
 
-	mdelay(5);
 
-	/*switch PCLK and MCLK to 2nd cam*/
-	pr_info("[CAM]s5k6aafx: s5k6aafx_sensor_probe switch clk\n");
-	if(data->camera_clk_switch != NULL)
-		data->camera_clk_switch();
+	data->pdata->camera_gpio_on();
+	mdelay(1);
+
 
 	/*MCLK enable*/
 	pr_info("[CAM]s5k6aafx: MCLK enable clk\n");
 	msm_camio_probe_on(s5k6aafx_pdev);
-	mdelay(10);
+	mdelay(1);
 
 	if (s5k6aafx_gpio_pull(data->sensor_reset, 1) < 0)
 		goto init_fail;
+	/*sugest by samsung change from 100ms to 10ms to pass CTS 2nd cam launch time*/
 	mdelay(10);
 
 	/*reset sensor*/
@@ -911,7 +1026,7 @@ int s5k6aafx_sensor_open_init(struct msm_camera_sensor_info *data)
 		s5k6aafx_regs.reset_init_size);
 	if (rc < 0)
 		goto init_fail;
-	mdelay(100);
+	mdelay(10);
 
 	/*T&P setting*/
 	rc = s5k6aafx_i2c_write_table(&s5k6aafx_regs.TP_init[0],
@@ -928,18 +1043,67 @@ int s5k6aafx_sensor_open_init(struct msm_camera_sensor_info *data)
 
 	/*set initial register*/
 	rc = s5k6aafx_i2c_write_table(&s5k6aafx_regs.register_init[0],
-			s5k6aafx_regs.register_init_size);
+		s5k6aafx_regs.register_init_size);
 	if (rc < 0)
 		goto init_fail;
 
 	/*set clock*/
 	if (data->csi_if) {/*mipi*/
-		pr_info("set mipi sensor clk\n");
+		pr_info("[CAM] set mipi sensor clk\n");
 		rc = s5k6aafx_i2c_write_table(&s5k6aafx_regs.mipi_clk_init[0],
 			s5k6aafx_regs.mipi_clk_init_size);
 		if (rc < 0)
 			goto init_fail;
-		mdelay(134);
+		/*sugest by samsung to pass CTS 2nd cam launch time*/
+		/*mdelay(134);*/
+
+		/*init setting*/
+		pr_info("[CAM]%s: pre_snap_conf_init\n", __func__);
+		rc = s5k6aafx_i2c_write_table(&s5k6aafx_regs.prev_snap_conf_init[0],
+			s5k6aafx_regs.prev_snap_conf_init_size);
+
+		/* preview configuration */
+		if (!data->full_size_preview) {/*VGA*/
+			pr_info("[CAM] NORMAL_QTR_SIZE_MODE\n");
+			rc = s5k6aafx_i2c_write_table(&s5k6aafx_regs.prev_mode_switch_VGA[0],
+			s5k6aafx_regs.prev_mode_switch_VGA_size);
+			mdelay(50); // Prevent CTS start timeout by greg's suggestion
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_W_ADDL, 0x0224);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_WR, 0x0000);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_W_ADDL, 0x0226);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_WR, 0x0001);
+			/*********** APPLY PREVIEW CONFIGURATION & RUN PREVIEW ***********/
+			/* REG_TC_GP_ActivePrevConfig-Select preview configuration_3 */
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_W_ADDL, 0x021C);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_WR, 0x0003);
+			/* REG_TC_GP_PrevOpenAfterChange */
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_W_ADDL, 0x0220);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_WR, 0x0001);
+			/* REG_TC_GP_NewConfigSync-Update preview configuration */
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_W_ADDL, 0x01F8);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_WR, 0x0001);
+			/* REG_TC_GP_PrevConfigChanged */
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_W_ADDL, 0x021E);
+			/* Enable output after config change */
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_WR, 0x0001);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_W_ADDL, 0x01F0);
+			/* REG_TC_GP_EnablePreview - Start preview */
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_WR, 0x0001);
+			/* REG_TC_GP_EnablePreviewChanged */
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_WR, 0x0001);
+		} else {/*HD*/
+			rc = s5k6aafx_i2c_write_table(&s5k6aafx_regs.prev_HD[0],
+			s5k6aafx_regs.prev_HD_size);
+			mdelay(100);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_W_ADDL, 0x0254);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_WR, 0x029A);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_W_ADDL, 0x021E);
+			s5k6aafx_i2c_write(s5k6aafx_client->addr, S5K6AAFX_REG_WR, 0x0001);
+		}
+
+		if (rc < 0)
+			goto init_fail;
+
 	} else { /*parallel*/
 		if (!data->full_size_preview) {
 			rc = s5k6aafx_i2c_write_table(&s5k6aafx_regs.clk_init[0],
@@ -949,31 +1113,40 @@ int s5k6aafx_sensor_open_init(struct msm_camera_sensor_info *data)
 			rc = s5k6aafx_i2c_write_table(&s5k6aafx_regs.clk_init_tb2[0],
 				s5k6aafx_regs.clk_init_tb2_size);
 		}
+		if (rc < 0)
+			goto init_fail;
+		/*sugest by samsung to pass CTS 2nd cam launch time*/
+		/*mdelay(100);*/
+
+		/* preview configuration */
+		if (!data->full_size_preview) {
+			pr_info("[CAM]%s: pre_snap_conf_init\n", __func__);
+			rc = s5k6aafx_i2c_write_table(&s5k6aafx_regs.prev_snap_conf_init[0],
+				s5k6aafx_regs.prev_snap_conf_init_size);
+		} else {
+			pr_info("[CAM]%s: pre_snap_conf_init_tb2\n", __func__);
+			rc = s5k6aafx_i2c_write_table(&s5k6aafx_regs.prev_snap_conf_init_tb2[0],
+				s5k6aafx_regs.prev_snap_conf_init_tb2_size);
+		}
 
 		if (rc < 0)
 			goto init_fail;
-		mdelay(100);
+
 	}
 
-	/* preview configuration */
-	if (!data->full_size_preview) {
-		rc = s5k6aafx_i2c_write_table(&s5k6aafx_regs.prev_snap_conf_init[0],
-			s5k6aafx_regs.prev_snap_conf_init_size);
-	} else {
-		pr_info("[CAM]%s: pre_snap_conf_init_tb2\n", __func__);
-		rc = s5k6aafx_i2c_write_table(&s5k6aafx_regs.prev_snap_conf_init_tb2[0],
-			s5k6aafx_regs.prev_snap_conf_init_tb2_size);
+	if (data->csi_if) {/*mipi*/
+		mdelay(50);  // Prevent CTS start timeout by greg's suggestion
+		/*MIPI Non_continous enable*/
+		s5k6aafx_mipi_setting();
 	}
-
-	if (rc < 0)
-		goto init_fail;
 
 	/* set default AWB */
 	rc = s5k6aafx_set_wb(CAMERA_AWB_AUTO);
 	if (rc < 0)
 		goto init_fail;
 
-	msm_camio_camif_pad_reg_reset();
+	if (!data->csi_if)
+		msm_camio_camif_pad_reg_reset();
 
 	rc = s5k6aafx_sensor_read_id(data);
 	if (rc < 0)
@@ -986,6 +1159,7 @@ init_done:
 
 init_fail:
 	kfree(s5k6aafx_ctrl);
+	s5k6aafx_ctrl = NULL;
 	return rc;
 }
 
@@ -1061,13 +1235,20 @@ int s5k6aafx_sensor_release(void)
 	int rc = 0;
 	struct msm_camera_sensor_info *sdata = s5k6aafx_pdev->dev.platform_data;
 
-	mutex_lock(&s5k6aafx_sem);
+	down(&s5k6aafx_sem);
+
+
+/*HTC_START Horng 20110905*/
+#ifdef CONFIG_MSM_CAMERA_8X60
+	msm_mipi_csi_disable();
+#endif
+/*HTC_END*/
+
 
 	if (s5k6aafx_ctrl)
 		s5k6aafx_gpio_pull(s5k6aafx_ctrl->sensordata->sensor_reset, 0);
-	mdelay(10);
+	mdelay(1);
 
-	msm_camio_probe_off(s5k6aafx_pdev);
 
 	if (s5k6aafx_ctrl) {
 		if (s5k6aafx_ctrl->sensordata->camera_pm8058_power != NULL)
@@ -1075,19 +1256,21 @@ int s5k6aafx_sensor_release(void)
 		else
 		  s5k6aafx_gpio_pull(s5k6aafx_ctrl->sensordata->sensor_pwd, 0);
 	}
-	mdelay(5);
+	mdelay(1);
+
+
+	msm_camio_probe_off(s5k6aafx_pdev);
 
 	sdata->pdata->camera_gpio_off();
-	if (!sdata->power_down_disable) {
-          s5k6aafx_vreg_disable(s5k6aafx_pdev);
-	}
+	mdelay(1);
 
-	if (s5k6aafx_ctrl) {
-		kfree(s5k6aafx_ctrl);
-		s5k6aafx_ctrl = NULL;
-	}
+	if (!sdata->power_down_disable)
+		s5k6aafx_vreg_disable(s5k6aafx_pdev);
 
-	mutex_unlock(&s5k6aafx_sem);
+	kfree(s5k6aafx_ctrl);
+	s5k6aafx_ctrl = NULL;
+
+	up(&s5k6aafx_sem);
 	return rc;
 }
 
@@ -1123,14 +1306,14 @@ static ssize_t htcwc_set(struct device *dev,
 	tmp = buf[0] - 0x30; /* only get the first char */
 
 #if 0
-	if (strcmp(current->comm,"com.android.camera")!=0){
+	if (strcmp(current->comm, "com.android.camera") != 0) {
 		pr_info("[CAM]No permission : not camera ap\n");
 		return -EINVAL;
 	}
 #endif
 
 	htcwc_value = tmp;
-	//pr_info("[CAM]current_comm = %s\n", current->comm);
+	/* pr_info("[CAM]current_comm = %s\n", current->comm); */
 	pr_info("[CAM]htcwc_value = %d\n", htcwc_value);
 	return count;
 }
@@ -1212,14 +1395,12 @@ static int s5k6aafx_i2c_probe(struct i2c_client *client,
 	i2c_set_clientdata(client, s5k6aafx_sensorw);
 	s5k6aafx_init_client(client);
 	s5k6aafx_client = client;
-
 	pr_info("[CAM]s5k6aafx_i2c_probe s5k6aafx_client->addr %d\n",
 		s5k6aafx_client->addr);
 
 	rc = s5k6aafx_sensor_read_id(info);
-	if (rc < 0) {
+	if (rc < 0)
 		goto probe_failure;
-	}
 
 	s5k6aafx_client = client;
 
@@ -1229,12 +1410,11 @@ static int s5k6aafx_i2c_probe(struct i2c_client *client,
 	return 0;
 
 probe_failure:
-	if (s5k6aafx_sensorw) kfree(s5k6aafx_sensorw);
+	kfree(s5k6aafx_sensorw);
 	s5k6aafx_sensorw = NULL;
 	s5k6aafx_client = NULL;
 	pr_err("[CAM]s5k6aafx_i2c_probe failed!\n");
 	return rc;
-
 }
 
 static const struct i2c_device_id s5k6aafx_i2c_id[] = {
@@ -1265,31 +1445,41 @@ static int s5k6aafx_sensor_probe(struct msm_camera_sensor_info *info,
 		if (s5k6aafx_gpio_pull(info->sensor_pwd, 1) < 0)
 			goto probe_fail;
 	}
-	mdelay(5);
+	mdelay(1);
+
 
 	/*switch clk source*/
 	pr_info("[CAM]s5k6aafx: s5k6aafx_sensor_probe switch clk\n");
-	if(info->camera_clk_switch != NULL)
+	if (info->camera_clk_switch != NULL)
 		info->camera_clk_switch();
 
 	/*MCLK enable*/
 	pr_info("[CAM]s5k6aafx: MCLK enable clk\n");
-	mdelay(10);
+	mdelay(1);
 
 	if (s5k6aafx_gpio_pull(info->sensor_reset, 1) < 0)
 		goto probe_fail;
-	mdelay(10);
+	mdelay(1);
 
-		/* reset i2c client to null */
-		s5k6aafx_client = NULL;
-		rc = i2c_add_driver(&s5k6aafx_i2c_driver);
-		if (rc < 0 || s5k6aafx_client == NULL) {
-			rc = -ENOTSUPP;
-			goto probe_fail;
-		}
+	/* reset i2c client to null */
+	s5k6aafx_client = NULL;
+	rc = i2c_add_driver(&s5k6aafx_i2c_driver);
+	if (rc < 0 || s5k6aafx_client == NULL) {
+		rc = -ENOTSUPP;
+/*
+		goto probe_done;
+*/
+		goto probe_fail;
+	}
+
+#if 0 /* move into i2c_probe */
+	rc = s5k6aafx_sensor_read_id(info);
+	if (rc < 0)
+		goto probe_fail;
+#endif
 
 	if (s5k6aafx_client->addr == 0x5a >> 1) {
-		printk("s5k6aafx_client->addr == 0x5a, COB \n");
+		pr_info("[CAM] s5k6aafx_client->addr == 0x5a, COB \n");
 		s5k6aafx_regs = s5k6aafx_regs_cob;
 	}
 
@@ -1301,15 +1491,17 @@ static int s5k6aafx_sensor_probe(struct msm_camera_sensor_info *info,
 	mdelay(800);
 
 	s5k6aafx_gpio_pull(info->sensor_reset, 0);
-	mdelay(10);
+	mdelay(1);
 
 	if (info->camera_pm8058_power != NULL)
 		info->camera_pm8058_power(0);
 	else
 		s5k6aafx_gpio_pull(info->sensor_pwd, 0);
-	mdelay(5);
+	mdelay(1);
+
 	info->pdata->camera_gpio_off();
-	mdelay(10);
+	mdelay(1);
+
 	if (!info->power_down_disable)
 		s5k6aafx_vreg_disable(s5k6aafx_pdev);
 
@@ -1340,6 +1532,23 @@ static int __s5k6aafx_probe(struct platform_device *pdev)
 	s5k6aafx_pdev = pdev;
 	if (!sdata->power_down_disable) {
 	rc = s5k6aafx_vreg_enable(pdev);
+
+
+	/*switch clk source*/
+	pr_info("[CAM]s5k6aafx: __s5k6aafx_probe switch clk\n");
+	if (sdata->camera_clk_switch != NULL)
+		sdata->camera_clk_switch();
+
+
+	if (sdata->camera_pm8058_power != NULL) {
+		if (sdata->camera_pm8058_power(1) < 0)
+			pr_info("[CAM]s5k6aafx: __s5k6aafx_probe sensor pwd failed\n");
+	} else {
+		if (s5k6aafx_gpio_pull(sdata->sensor_pwd, 1) < 0)
+			pr_info("[CAM]s5k6aafx: __s5k6aafx_probe sensor pwd failed\n");
+	}
+	mdelay(1);
+
 	sdata->pdata->camera_gpio_on();
 	if (rc < 0)
 		pr_err("[CAM]__s5k6aafx_probe fail sensor power on error\n");
@@ -1351,7 +1560,11 @@ static int __s5k6aafx_probe(struct platform_device *pdev)
 static struct platform_driver msm_camera_driver = {
 	.probe = __s5k6aafx_probe,
 	.driver = {
+#ifdef CONFIG_MSM_CAMERA_8X60
+		   .name = "msm_camera_webcam",
+#else
 		   .name = "msm_camera_s5k6aafx",
+#endif
 		   .owner = THIS_MODULE,
 		   },
 };

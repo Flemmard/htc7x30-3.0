@@ -115,6 +115,7 @@ struct s5k3h1gx_i2c_reg_conf s5k3h1gx_common_settings_array_mipi[] =
   { 0x0301 , 0x05 }, /* vt_pix_clk_div = 5 */
   { 0x030B , 0x01 }, /* op_sys_clk_div = 1 */
   { 0x0309 , 0x05 }, /* op_pix_clk_div = 5 */
+  { 0x30C9 , 0x01 }, /* mipi voltage driving strength 10% increase */
   { 0x30CC , 0xA0 }, /* DPHY_band_ctrl 560 ~ 640Mbps */
 };
 

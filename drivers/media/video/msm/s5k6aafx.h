@@ -50,15 +50,21 @@
 
 #define S5K6AAFX_QTR_SIZE_WIDTH 0x0280
 #define S5K6AAFX_QTR_SIZE_HEIGHT 0x01E0
-#define S5K6AAFX_720P_SIZE_WIDTH 0x0500
-#define S5K6AAFX_720P_SIZE_HEIGHT 0x02D0
+#ifdef CONFIG_MACH_VERDI_LTE    /* 1280 x 752 for Puccini */
+#define S5K6AAFX_720P_SIZE_WIDTH 0x0500     /* 1280 */
+#define S5K6AAFX_720P_SIZE_HEIGHT 0x02F0    /* 752 */
+#else
+#define S5K6AAFX_720P_SIZE_WIDTH 0x0500     /* 1280 */
+#define S5K6AAFX_720P_SIZE_HEIGHT 0x02D0    /* 720 */
+#endif
 #define S5K6AAFX_FULL_SIZE_WIDTH 0x0500
 #define S5K6AAFX_FULL_SIZE_HEIGHT 0x0400
 #define S5K6AAFX_ADJ_FULL_SIZE_WIDTH S5K6AAFX_QTR_SIZE_WIDTH*2
 #define S5K6AAFX_ADJ_FULL_SIZE_HEIGHT S5K6AAFX_QTR_SIZE_HEIGHT*2
 
 extern struct s5k6aafx_reg s5k6aafx_regs;
-#if defined(CONFIG_MACH_FLYER)
+
+#if defined(CONFIG_MACH_SHOOTER) || defined(CONFIG_MACH_SHOOTER_K) || defined(CONFIG_MACH_SHOOTER_U) || defined(CONFIG_MACH_RIDER)  || defined(CONFIG_MACH_VILLEC2) || defined(CONFIG_MACH_HOLIDAY) || defined(CONFIG_MACH_VERDI_LTE) || defined(CONFIG_MACH_KINGDOM) || defined(CONFIG_MACH_SHOOTER_CT)
 extern struct s5k6aafx_reg s5k6aafx_regs_cob;
 #else
 #define s5k6aafx_regs_cob s5k6aafx_regs
@@ -72,10 +78,10 @@ struct s5k6aafx_i2c_reg_conf {
 struct s5k6aafx_reg {
 	const struct s5k6aafx_i2c_reg_conf *reset_init;
 	uint16_t reset_init_size;
-        const struct s5k6aafx_i2c_reg_conf *TP_init;
-        uint16_t TP_init_size;
-        const struct s5k6aafx_i2c_reg_conf *analog_setting_init;
-        uint16_t analog_setting_init_size;
+	const struct s5k6aafx_i2c_reg_conf *TP_init;
+	uint16_t TP_init_size;
+	const struct s5k6aafx_i2c_reg_conf *analog_setting_init;
+	uint16_t analog_setting_init_size;
 	const struct s5k6aafx_i2c_reg_conf *register_init;
 	uint16_t register_init_size;
 	const struct s5k6aafx_i2c_reg_conf *mipi_clk_init;
@@ -89,6 +95,13 @@ struct s5k6aafx_reg {
 	uint16_t clk_init_tb2_size;
 	const struct s5k6aafx_i2c_reg_conf *prev_snap_conf_init_tb2;
 	uint16_t prev_snap_conf_init_tb2_size;
+	const struct s5k6aafx_i2c_reg_conf *prev_HD;
+	uint16_t prev_HD_size;
+	const struct s5k6aafx_i2c_reg_conf *prev_VGA;
+	uint16_t prev_VGA_size;
+	const struct s5k6aafx_i2c_reg_conf *prev_mode_switch_VGA;
+	uint16_t prev_mode_switch_VGA_size;
 };
+
 
 #endif /* S5K6AAFX_H */

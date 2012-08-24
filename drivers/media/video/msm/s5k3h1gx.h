@@ -58,7 +58,7 @@
 #define S5K3H1GX_H
 
 #include <linux/types.h>
-#include <mach/camera-7x30.h>
+#include <mach/camera.h>
 
 struct s5k3h1gx_i2c_reg_conf {
 	unsigned short waddr;
@@ -80,6 +80,12 @@ struct s5k3h1gx_reg_t {
 	uint16_t qtr_mipi_size;
 	struct s5k3h1gx_i2c_reg_conf *qtr_parallel;
 	uint16_t qtr_parallel_size;
+
+	struct s5k3h1gx_i2c_reg_conf *video_mipi;
+	uint16_t video_mipi_size;
+
+	struct s5k3h1gx_i2c_reg_conf *fast_video_mipi;
+	uint16_t fast_video_mipi_size;
 
 	struct s5k3h1gx_i2c_reg_conf *full_mipi;
 	uint16_t full_mipi_size;
