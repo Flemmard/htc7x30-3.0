@@ -247,6 +247,8 @@ static int panel_gpio_switch(int on)
 
 static struct resource resources_msm_fb[] = {
   {
+    .start = MSM_FB_BASE,
+    .end = MSM_FB_BASE + MSM_FB_SIZE - 1,
     .flags = IORESOURCE_MEM,
   },
 };
@@ -324,9 +326,10 @@ int vision_init_panel(void)
     return -1;
   }
 
+  /*
   resources_msm_fb[0].start = msm_fb_base;
   resources_msm_fb[0].end = msm_fb_base + MSM_FB_SIZE - 1;
-
+  */
   if(is_samsung_panel())
     ret = vreg_set_level(vreg_ldo20, 2850);
   else
