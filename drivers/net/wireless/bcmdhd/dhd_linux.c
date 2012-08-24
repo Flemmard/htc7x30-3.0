@@ -2633,8 +2633,10 @@ dhd_ioctl_entry(struct net_device *net, struct ifreq *ifr, int cmd)
 	}
 #endif /* WLMEDIA_HTSF */
 
-	bcmerror = dhd_wl_ioctl(&dhd->pub, ifidx, (wl_ioctl_t *)&ioc, buf, buflen);
-
+	/* HTC_CSP_START*/
+	if (buf != NULL)
+		bcmerror = dhd_wl_ioctl(&dhd->pub, ifidx, (wl_ioctl_t *)&ioc, buf, buflen);
+	/* HTC_CSP_END*/
 done:
 	dhd_check_hang(net, &dhd->pub, bcmerror);
 
@@ -3525,6 +3527,8 @@ int ht_wsec_restrict = WLC_HT_TKIP_RESTRICT | WLC_HT_WEP_RESTRICT;
 #ifdef GET_CUSTOM_MAC_ENABLE
 	struct ether_addr ea_addr;
 #endif /* GET_CUSTOM_MAC_ENABLE */
+	uint srl = 15;
+	uint lrl = 15;
 
 	DHD_TRACE(("Enter %s\n", __func__));
 	dhd->op_mode = 0;
@@ -3913,6 +3917,10 @@ int ht_wsec_restrict = WLC_HT_TKIP_RESTRICT | WLC_HT_WEP_RESTRICT;
 	ret = 1;
 	bcm_mkiovar("tc_enable", (char *)&ret, 4, iovbuf, sizeof(iovbuf));
 	dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0);
+
+	/* set srl and lrl */
+	dhd_wl_ioctl_cmd(dhd, WLC_SET_SRL, (char *)&srl, sizeof(srl), TRUE, 0);
+	dhd_wl_ioctl_cmd(dhd, WLC_SET_LRL, (char *)&lrl, sizeof(lrl), TRUE, 0);
 /* HTC_CSP_END */
 
 done:

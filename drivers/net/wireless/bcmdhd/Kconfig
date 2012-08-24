@@ -31,4 +31,3 @@ config BCMDHD_P2P_INTERFACE
        bool "Enable this to use a separate interface (p2p0)"
        default n
 
-     

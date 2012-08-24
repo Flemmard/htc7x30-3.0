@@ -121,7 +121,6 @@ u32 wl_dbg_level = WL_DBG_ERR ;
 /* Set this to 1 to use a seperate interface (p2p0)
  *  for p2p operations.
  */
-
 #ifdef CONFIG_BCMDHD_P2P_INTERFACE
 #define ENABLE_P2P_INTERFACE	1
 #else
@@ -1685,9 +1684,12 @@ __wl_cfg80211_scan(struct wiphy *wiphy, struct net_device *ndev,
 #ifdef HTC_KlocWork
 				if (request)
 #endif
+				/* HTC_CSP_START*/
+				if (request->ie != NULL){
 					err = wl_cfgp2p_enable_discovery(wl, ndev,
 					request->ie, request->ie_len);
-
+				}
+				/*HTC_CSP_END*/
 				if (unlikely(err)) {
 					goto scan_out;
 				}
@@ -3844,12 +3846,16 @@ wl_cfg80211_mgmt_tx(struct wiphy *wiphy, struct net_device *ndev,
 		}
 	}
 	cfg80211_mgmt_tx_status(ndev, *cookie, buf, len, ack, GFP_KERNEL);
-	if (act_frm->subtype == P2P_PAF_GON_CONF) {
+	/*HTC_CSP_START*/
+	if (act_frm != NULL){
+		if (act_frm->subtype == P2P_PAF_GON_CONF) {
 #ifdef FORCE_MPC
 		if (!strstr(firmware_path, "_p2p"))
 #endif
-			wldev_iovar_setint(dev, "mpc", 1);
+		wldev_iovar_setint(dev, "mpc", 1);
+		}
 	}
+	/*HTC_CSP_END*/
 	kfree(af_params);
 exit:
 	return err;
@@ -4177,6 +4183,9 @@ exit:
 	return 0;
 }
 
+#define default_ssid "HTC Portable Hotspot"
+static int used_default_ssid = 0;
+
 static s32
 wl_cfg80211_add_set_beacon(struct wiphy *wiphy, struct net_device *dev,
 	struct beacon_parameters *info)
@@ -4319,7 +4328,7 @@ wl_cfg80211_add_set_beacon(struct wiphy *wiphy, struct net_device *dev,
 			int max_assoc = 8;
 			bcm_tlv_t *max_assoc_ie;
 
-			if (ssid_ie->len == 0) {
+			if (ssid_ie->len == 0 && ssid_ie->data[0] == DOT11_MNG_SSID_ID) {
 				printf("%s: search SSID again to get real SSID.\n", __func__);
 				ssid_ie = bcm_parse_tlvs((u8 *)ssid_ie->data,
 							info->head_len - ie_offset - 1,
@@ -4328,13 +4337,31 @@ wl_cfg80211_add_set_beacon(struct wiphy *wiphy, struct net_device *dev,
 					printf("%s: got real ssid, use it instead. ssid_ie->len=%d\n", __func__, ssid_ie->len);
 				else
 					printf("%s: so sad. no real ssid found.\n", __func__);
+				wl_iw_send_priv_event(dev,"NULL_SSID_IE");
+				used_default_ssid = 1;
 				closed = 1;
+			} else if (ssid_ie->len == 0) {
+				printf("%s: so sad!!!!. no real ssid found.\n", __func__);
+				wl_iw_send_priv_event(dev,"NULL_SSID_IE");
+				used_default_ssid = 1;
 			}
 			/*HTC_CSP_END*/
 			memset(&ssid, 0, sizeof(wlc_ssid_t)); 
-			memcpy(ssid.SSID, ssid_ie->data, ssid_ie->len);
-			WL_DBG(("SSID is (%s) in Head \n", ssid.SSID));
-			ssid.SSID_len = ssid_ie->len;
+
+			/* HTC_CSP_START*/
+			if (ssid_ie != NULL && ssid_ie->len) {
+				memcpy(ssid.SSID, ssid_ie->data, ssid_ie->len);
+				ssid.SSID_len = ssid_ie->len;
+			}
+			else if (used_default_ssid) {
+				printf("Use default SSID to if SSID is NULL\n");
+				memcpy(ssid.SSID, default_ssid, strlen(default_ssid));
+				ssid.SSID_len = strlen(default_ssid);
+				used_default_ssid = 0;
+			}
+			/* HTC_CSP_END*/
+
+			printf("SSID is (%s) in Head  , ssid.SSID_len[%d]\n", ssid.SSID,ssid.SSID_len);
 			wldev_iovar_setint(dev, "mpc", 0);
 			wldev_ioctl(dev, WLC_DOWN, &ap, sizeof(s32), true);
 			wldev_ioctl(dev, WLC_SET_INFRA, &infra, sizeof(s32), true);
@@ -5545,13 +5572,17 @@ wl_notify_rx_mgmt_frame(struct wl_priv *wl, struct net_device *ndev,
 		/*
 		 * After complete GO Negotiation, roll back to mpc mode
 		 */
-		if ((act_frm->subtype == P2P_PAF_GON_CONF) ||
-		(act_frm->subtype == P2P_PAF_PROVDIS_RSP)) {
+		/*HTC_CSP_START*/
+		if (act_frm != NULL) {
+			if ((act_frm->subtype == P2P_PAF_GON_CONF) ||
+			    (act_frm->subtype == P2P_PAF_PROVDIS_RSP)) {
 #ifdef FORCE_MPC
-			if (!strstr(firmware_path, "_p2p"))
+				if (!strstr(firmware_path, "_p2p"))
 #endif
 				wldev_iovar_setint(dev, "mpc", 1);
+			}
 		}
+		/*HTC_CSP_END*/
 	} else {
 		mgmt_frame = (u8 *)((wl_event_rx_frame_data_t *)rxframe + 1);
 	}
@@ -5583,7 +5614,10 @@ static void wl_init_prof(struct wl_priv *wl, struct net_device *ndev)
 	struct wl_profile *profile = wl_get_profile_by_netdev(wl, ndev);
 
 	spin_lock_irqsave(&wl->cfgdrv_lock, flags);
-	memset(profile, 0, sizeof(struct wl_profile));
+	/* HTC_CSP_START*/
+	if (profile != NULL)
+		memset(profile, 0, sizeof(struct wl_profile));
+	/* HTC_CSP_END*/
 	spin_unlock_irqrestore(&wl->cfgdrv_lock, flags);
 }
 
