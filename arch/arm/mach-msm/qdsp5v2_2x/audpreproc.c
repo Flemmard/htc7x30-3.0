@@ -364,8 +364,10 @@ int audpreproc_aenc_alloc(unsigned enc_type, const char **module_name,
 		}
 	}
 
+	#if defined(CONFIG_MACH_SPADE) || defined(CONFIG_MACH_GLACIER) || defined(CONFIG_MACH_VISION)
 	/* hack for audio record */
 	lidx = 1;
+	#endif
 
 	if (lidx < msm_enc_database.num_enc) {
 		audpreproc->enc_inuse |= (1 << lidx);
