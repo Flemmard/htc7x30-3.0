@@ -425,6 +425,66 @@ static struct platform_device msm_ihs_mono_tx_device = {
 	.dev = { .platform_data = &snddev_ihs_mono_tx_data },
 };
 
+#if 1 /* add for Beats headet tx during voice call*/
+static struct adie_codec_action_unit beats_ihs_mono_tx_8KHz_osr256_actions[] =
+	HEADSET_MONO_TX_8000_OSR_256;
+
+static struct adie_codec_action_unit beats_ihs_mono_tx_16KHz_osr256_actions[] =
+	HEADSET_MONO_TX_16000_OSR_256;
+
+static struct adie_codec_action_unit beats_ihs_mono_tx_48KHz_osr256_actions[] =
+	HEADSET_MONO_TX_48000_OSR_256;
+
+static struct adie_codec_hwsetting_entry beats_ihs_mono_tx_settings[] = {
+	{
+		.freq_plan = 8000,
+		.osr = 256,
+		.actions = beats_ihs_mono_tx_8KHz_osr256_actions,
+		.action_sz = ARRAY_SIZE(beats_ihs_mono_tx_8KHz_osr256_actions),
+	},
+	{
+		.freq_plan = 16000,
+		.osr = 256,
+		.actions = beats_ihs_mono_tx_16KHz_osr256_actions,
+		.action_sz = ARRAY_SIZE(beats_ihs_mono_tx_16KHz_osr256_actions),
+	},
+	{
+		.freq_plan = 48000,
+		.osr = 256,
+		.actions = beats_ihs_mono_tx_48KHz_osr256_actions,
+		.action_sz = ARRAY_SIZE(beats_ihs_mono_tx_48KHz_osr256_actions),
+	}
+};
+
+static struct adie_codec_dev_profile beats_ihs_mono_tx_profile = {
+	.path_type = ADIE_CODEC_TX,
+	.settings = beats_ihs_mono_tx_settings,
+	.setting_sz = ARRAY_SIZE(beats_ihs_mono_tx_settings),
+};
+
+static struct snddev_icodec_data snddev_beats_ihs_mono_tx_data = {
+	.capability = (SNDDEV_CAP_TX | SNDDEV_CAP_VOICE),
+	.name = "Beats_headset_mono_tx",
+	.copp_id = 0,
+	.acdb_id = ACDB_ID_HEADSET_MIC,
+	.profile = &beats_ihs_mono_tx_profile,
+	.channel_mode = 1,
+	.pmctl_id = NULL,
+	.pmctl_id_sz = 0,
+	.default_sample_rate = 48000,
+	.pamp_on = ext_mic_enable,
+	.aic3254_id = VOICERECORD_EMIC,
+	.aic3254_voc_id = CALL_UPLINK_EMIC_HEADSET,
+	.default_aic3254_id = VOICERECORD_EMIC
+};
+
+static struct platform_device msm_beats_ihs_mono_tx_device = {
+	.name = "snddev_icodec",
+	.id = 29,
+	.dev = { .platform_data = &snddev_beats_ihs_mono_tx_data },
+};
+
+#endif
 #if 1 /* add for FM recording */
 static struct adie_codec_action_unit fm_ihs_mono_tx_48KHz_osr256_actions[] =
 	FM_HEADSET_MONO_TX_48000_OSR_256;
@@ -1136,7 +1196,8 @@ static struct platform_device *snd_devices_surf[] __initdata = {
 	&msm_real_stereo_tx_device,
 	&msm_snddev_mi2s_stereo_rx_device,
 	&msm_ihs_vr_mic_device,
-	&msm_fm_ihs_mono_tx_device
+	&msm_fm_ihs_mono_tx_device,
+	&msm_beats_ihs_mono_tx_device
 };
 
 void htc_7x30_register_analog_ops(struct q5v2audio_analog_ops *ops)
