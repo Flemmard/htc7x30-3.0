@@ -3302,7 +3302,7 @@ static void __init vision_init(void)
 	vision_wifi_init();
 	msm_init_pmic_vibrator(3000);
 }
-/*
+
 static unsigned pmem_sf_size = MSM_PMEM_SF_SIZE;
 static int __init pmem_sf_size_setup(char *p)
 {
@@ -3310,7 +3310,6 @@ static int __init pmem_sf_size_setup(char *p)
 	return 0;
 }
 early_param("pmem_sf_size", pmem_sf_size_setup);
-*/
 
 static unsigned fb_size = MSM_FB_SIZE;
 static int __init fb_size_setup(char *p)
@@ -3366,6 +3365,7 @@ static void __init size_pmem_devices(void)
 {
 #ifdef CONFIG_ANDROID_PMEM
 	size_pmem_device(&android_pmem_adsp_pdata, MSM_PMEM_ADSP_BASE, pmem_adsp_size);
+	size_pmem_device(&android_pmem_pdata, MSM_PMEM_SF_BASE, pmem_sf_size);
 #endif
 }
 
@@ -3383,6 +3383,7 @@ static void __init reserve_pmem_memory(void)
 	reserve_memory_for(&android_pmem_adsp_pdata);
 	reserve_memory_for(&android_pmem_pdata);
 #endif
+        msm7x30_reserve_table[MEMTYPE_EBI1].size += PMEM_KERNEL_EBI1_SIZE;
 }
 
 static void __init msm7x30_calculate_reserve_sizes(void)
